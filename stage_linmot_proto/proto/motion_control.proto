@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package stage_linmot;
+
+option go_package = "github.com/Smart-Vision-Works/svw_mono/stage_linmot_proto/gen;gen";
+
+service MotionControl {
+  rpc Home (HomeRequest) returns (HomeResponse);
+  rpc MoveToPosition (MoveToPositionRequest) returns (MoveToPositionResponse);
+  rpc MoveByOffset (MoveByOffsetRequest) returns (MoveByOffsetResponse);
+  rpc Jog (JogRequest) returns (JogResponse);
+  rpc Stop (StopRequest) returns (StopResponse);
+  rpc SetOutput (SetOutputRequest) returns (SetOutputResponse);
+  rpc GetStatus (GetStatusRequest) returns (GetStatusResponse);
+  rpc StreamStatus (StreamStatusRequest) returns (stream GetStatusResponse);
+}
+
+message HomeRequest {}
+message HomeResponse {}
+
+message MoveToPositionRequest { double position_mm = 1; int64 timeout_ms = 2; double tolerance_mm = 3; }
+message MoveToPositionResponse {}
+
+message MoveByOffsetRequest { double delta_mm = 1; int64 timeout_ms = 2; double tolerance_mm = 3; }
+message MoveByOffsetResponse {}
+
+message JogRequest { double velocity_mm_s = 1; double accel_mm_s2 = 2; int64 timeout_ms = 3; }
+message JogResponse {}
+
+message StopRequest {}
+message StopResponse {}
+
+message SetOutputRequest { string name = 1; bool value_bool = 2; int64 timeout_ms = 3; }
+message SetOutputResponse {}
+
+message GetStatusRequest {}
+message StreamStatusRequest {}
+
+message IOState { repeated string inputs = 1; repeated string outputs = 2; }
+
+message GetStatusResponse {
+  bool is_enabled = 1;
+  bool is_homed = 2;
+  bool has_fault = 3;
+  double position_mm = 4;
+  double velocity_mm_s = 5;
+  string active_mode = 6;
+  IOState io = 7;
+}

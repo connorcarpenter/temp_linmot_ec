@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package stage_linmot;
+
+option go_package = "github.com/Smart-Vision-Works/svw_mono/stage_linmot_proto/gen;gen";
+
+service Diagnostics {
+  rpc ClearFaults (ClearFaultsRequest) returns (ClearFaultsResponse);
+  rpc Ping (PingRequest) returns (PingResponse);
+  rpc ReadRegister (ReadRegisterRequest) returns (ReadRegisterResponse);
+  rpc WriteRegister (WriteRegisterRequest) returns (WriteRegisterResponse);
+}
+
+message ClearFaultsRequest {}
+message ClearFaultsResponse {}
+
+message PingRequest {}
+message PingResponse { string message = 1; }
+
+message ReadRegisterRequest { string name = 1; }
+message ReadRegisterResponse { string name = 1; string value = 2; }
+
+message WriteRegisterRequest { string name = 1; string value = 2; }
+message WriteRegisterResponse {}
