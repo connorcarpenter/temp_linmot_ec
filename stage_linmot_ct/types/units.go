@@ -83,9 +83,9 @@ func (uc *UnitConverter) ConvertJerk(value float64, from, to JerkUnit) float64 {
 	
 	switch {
 	case from == JerkUnitMMS3 && to == JerkUnitCountsS3:
-		return value * uc.positionScalingFactor
+		return value * uc.positionScalingFactor * uc.positionScalingFactor * uc.positionScalingFactor
 	case from == JerkUnitCountsS3 && to == JerkUnitMMS3:
-		return value / uc.positionScalingFactor
+		return value / (uc.positionScalingFactor * uc.positionScalingFactor * uc.positionScalingFactor)
 	default:
 		return value
 	}

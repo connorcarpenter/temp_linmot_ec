@@ -245,9 +245,9 @@ func (tv *TimeValue) String() string {
 func (tv *TimeValue) Duration() time.Duration {
 	switch tv.Unit {
 	case TimeUnitMS:
-		return time.Duration(tv.Value) * time.Millisecond
+		return time.Duration(tv.Value * float64(time.Millisecond))
 	case TimeUnitS:
-		return time.Duration(tv.Value) * time.Second
+		return time.Duration(tv.Value * float64(time.Second))
 	default:
 		return 0
 	}
@@ -493,9 +493,9 @@ func (pe *ParameterExtractor) ExtractBool(params map[string]interface{}, key str
 	case string:
 		return strconv.ParseBool(v)
 	case int:
-		return v != 0
+		return v != 0, nil
 	case float64:
-		return v != 0
+		return v != 0, nil
 	default:
 		return false, fmt.Errorf("parameter %s is not a boolean", key)
 	}
@@ -519,6 +519,129 @@ func (pe *ParameterExtractor) ExtractString(params map[string]interface{}, key s
 		return strconv.FormatBool(v), nil
 	default:
 		return "", fmt.Errorf("parameter %s is not a string", key)
+	}
+}
+
+// ExtractAcceleration extracts an acceleration parameter
+func (pe *ParameterExtractor) ExtractAcceleration(params map[string]interface{}, key string) (*AccelerationValue, error) {
+	value, ok := params[key]
+	if !ok {
+		return nil, fmt.Errorf("parameter %s not found", key)
+	}
+
+	switch v := value.(type) {
+	case *AccelerationValue:
+		return v, nil
+	case map[string]interface{}:
+		// Parse from map
+		val, valOk := v["value"].(float64)
+		if !valOk {
+			return nil, fmt.Errorf("parameter %s value is not a number", key)
+		}
+		
+		unitStr, unitOk := v["unit"].(string)
+		if !unitOk {
+			return nil, fmt.Errorf("parameter %s unit is not a string", key)
+		}
+		
+		var unit AccelerationUnit
+		switch unitStr {
+		case "mm/s²":
+			unit = AccelerationUnitMMS2
+		case "counts/s²":
+			unit = AccelerationUnitCountsS2
+		default:
+			return nil, fmt.Errorf("parameter %s has unknown unit: %s", key, unitStr)
+		}
+		
+		return NewAccelerationValue(val, unit), nil
+	case float64:
+		// Default to mm/s²
+		return NewAccelerationValue(v, AccelerationUnitMMS2), nil
+	default:
+		return nil, fmt.Errorf("parameter %s is not an acceleration value", key)
+	}
+}
+
+// ExtractJerk extracts a jerk parameter
+func (pe *ParameterExtractor) ExtractJerk(params map[string]interface{}, key string) (*JerkValue, error) {
+	value, ok := params[key]
+	if !ok {
+		return nil, fmt.Errorf("parameter %s not found", key)
+	}
+
+	switch v := value.(type) {
+	case *JerkValue:
+		return v, nil
+	case map[string]interface{}:
+		// Parse from map
+		val, valOk := v["value"].(float64)
+		if !valOk {
+			return nil, fmt.Errorf("parameter %s value is not a number", key)
+		}
+		
+		unitStr, unitOk := v["unit"].(string)
+		if !unitOk {
+			return nil, fmt.Errorf("parameter %s unit is not a string", key)
+		}
+		
+		var unit JerkUnit
+		switch unitStr {
+		case "mm/s³":
+			unit = JerkUnitMMS3
+		case "counts/s³":
+			unit = JerkUnitCountsS3
+		default:
+			return nil, fmt.Errorf("parameter %s has unknown unit: %s", key, unitStr)
+		}
+		
+		return NewJerkValue(val, unit), nil
+	case float64:
+		// Default to mm/s³
+		return NewJerkValue(v, JerkUnitMMS3), nil
+	default:
+		return nil, fmt.Errorf("parameter %s is not a jerk value", key)
+	}
+}
+
+// ExtractForce extracts a force parameter
+func (pe *ParameterExtractor) ExtractForce(params map[string]interface{}, key string) (*ForceValue, error) {
+	value, ok := params[key]
+	if !ok {
+		return nil, fmt.Errorf("parameter %s not found", key)
+	}
+
+	switch v := value.(type) {
+	case *ForceValue:
+		return v, nil
+	case map[string]interface{}:
+		// Parse from map
+		val, valOk := v["value"].(float64)
+		if !valOk {
+			return nil, fmt.Errorf("parameter %s value is not a number", key)
+		}
+		
+		unitStr, unitOk := v["unit"].(string)
+		if !unitOk {
+			return nil, fmt.Errorf("parameter %s unit is not a string", key)
+		}
+		
+		var unit ForceUnit
+		switch unitStr {
+		case "N":
+			unit = ForceUnitN
+		case "counts":
+			unit = ForceUnitCounts
+		default:
+			return nil, fmt.Errorf("parameter %s has unknown unit: %s", key, unitStr)
+		}
+		
+		return NewForceValue(val, unit), nil
+	case float64:
+		// Default to Newtons
+		return NewForceValue(v, ForceUnitN), nil
+	default:
+		return nil, fmt.Errorf("parameter %s is not a force value", key)
 	}
 }
 

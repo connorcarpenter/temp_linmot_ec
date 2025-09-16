@@ -353,6 +353,7 @@ type ConditionValidator interface {
 // DefaultConditionEvaluator provides a default implementation of ConditionEvaluator
 type DefaultConditionEvaluator struct {
 	driveStatusProvider DriveStatusProvider
+	condition          *Condition
 }
 
 // DriveStatusProvider defines the interface for providing drive status
@@ -467,7 +468,9 @@ func (dce *DefaultConditionEvaluator) evaluateAnalogInput(ctx context.Context, c
 		return false, fmt.Errorf("expected float64 value for analog input condition")
 	}
 	
-	return dce.compareValues(actualValue, condition.Operator, expectedValue), nil
+	// Set the operator for comparison
+	dce.condition = condition
+	return dce.compareValues(actualValue, expectedValue), nil
 }
 
 // evaluatePosition evaluates a position condition
@@ -490,7 +493,9 @@ func (dce *DefaultConditionEvaluator) evaluatePosition(ctx context.Context, cond
 	
 	// TODO: Add unit conversion logic here
 	
-	return dce.compareValues(actualValue, condition.Operator, expectedValue), nil
+	// Set the operator for comparison
+	dce.condition = condition
+	return dce.compareValues(actualValue, expectedValue), nil
 }
 
 // evaluateVelocity evaluates a velocity condition
@@ -513,7 +518,9 @@ func (dce *DefaultConditionEvaluator) evaluateVelocity(ctx context.Context, cond
 	
 	// TODO: Add unit conversion logic here
 	
-	return dce.compareValues(actualValue, condition.Operator, expectedValue), nil
+	// Set the operator for comparison
+	dce.condition = condition
+	return dce.compareValues(actualValue, expectedValue), nil
 }
 
 // evaluateForce evaluates a force condition
@@ -536,7 +543,9 @@ func (dce *DefaultConditionEvaluator) evaluateForce(ctx context.Context, conditi
 	
 	// TODO: Add unit conversion logic here
 	
-	return dce.compareValues(actualValue, condition.Operator, expectedValue), nil
+	// Set the operator for comparison
+	dce.condition = condition
+	return dce.compareValues(actualValue, expectedValue), nil
 }
 
 // evaluateTimer evaluates a timer condition
@@ -553,7 +562,9 @@ func (dce *DefaultConditionEvaluator) evaluateVariable(ctx context.Context, cond
 		return false, fmt.Errorf("variable %s not found", condition.Parameter)
 	}
 	
-	return dce.compareValues(actualValue, condition.Operator, condition.Value), nil
+	// Set the operator for comparison
+	dce.condition = condition
+	return dce.compareValues(actualValue, condition.Value), nil
 }
 
 // evaluateDriveState evaluates a drive state condition

@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -240,6 +241,17 @@ func (cb *CommandBuilder) Build() *Command {
 	cb.cmd.CreatedAt = time.Now()
 	cb.cmd.UpdatedAt = time.Now()
 	return cb.cmd
+}
+
+// Validate performs basic validation on the command
+func (c *Command) Validate() error {
+	if c.ID <= 0 {
+		return fmt.Errorf("command ID must be positive, got %d", c.ID)
+	}
+	if c.Type < CmdMoveAbsolute {
+		return fmt.Errorf("command type cannot be unknown")
+	}
+	return nil
 }
 
 // CommandTableBuilder provides a fluent interface for building command tables
