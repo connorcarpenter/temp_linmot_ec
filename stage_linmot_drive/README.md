@@ -1,6 +1,6 @@
 # stage_linmot_drive
 
-CPython-backed Go module that provides a **1:1 interface to LinMot’s vendor Python control script** (as provided by support). This is the lowest layer in our stack: it speaks EtherCAT (via the vendor code) and exposes a stable Go API for higher layers.
+CPython-backed Go module that provides a **1:1 interface to LinMot’s vendor Python control library** (as provided by support). Find it in the `python_source` top-level directory in this repo. This is the lowest layer in our stack: it speaks EtherCAT (via the vendor code) and exposes a stable Go API for higher layers.
 
 - **Goal:** expose the vendor script’s capabilities with minimal translation, so we can upgrade or diff against the Python source easily.
 - **Scope:** lifecycle, motion, I/O, diagnostics, and status calls; **no business logic** and no “command-table equivalents” here.
