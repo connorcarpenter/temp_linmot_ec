@@ -1,0 +1,129 @@
+Quick Start Guide for LinMot EtherCAT GUI Software
+==================================================
+This software is an application example.
+
+Disclaimer:
+-----------
+This is a demo project developed for NTI AG | LinMot & MagSpring. This
+software is provided "as-is" without any warranties or guarantees.
+NTI AG does not provide support, updates, or maintenance for this software. 
+Use it at your own risk.
+
+Pilot Phase Notice:
+-------------------
+This software is currently in a pilot/testing phase and may contain bugs or incomplete features.
+It is intended for evaluation and demonstration purposes only.
+If communication is interrupted or an error occurs, the software must be fully restarted to resume operation.
+Partial restarts or continuing after a failure may result in undefined behavior.
+
+Platform Support:
+-----------------
+- Officially tested on Windows 11 (64-bit)
+- May run on Linux with GUI, but not officially supported
+- Validated with LinMot C1250-MI drive
+
+1. System Requirements
+----------------------
+- Operating System: Windows 11 (64-bit)
+- Python Version: Python 3.13.3 (64-bit)
+- Network Driver: Npcap 1.82 (WinPcap API-compatible mode)
+- Hardware: Dual-core processor or better
+
+
+2. Installation Instructions (Windows 11)
+-----------------------------------------
+1. Install Python 3 (64-bit)
+   a. Download the installer from: https://www.python.org/
+   b. Recommended version: Python 3.13.3
+   c. Run the installer and select “Install Now”
+
+2. Install Npcap
+   a. Download from: https://npcap.com/
+   b. Use version 1.82
+   c. During installation, enable the option:
+      “Install Npcap in WinPcap API-compatible Mode”
+
+3. Install Required Python Libraries
+   a. Open Command Prompt (Start > type `cmd`)
+   b. Upgrade pip:
+      py -m pip install --upgrade pip
+   c. Install required packages:
+      py -m pip install pysoem readerwriterlock psutil
+
+ Note:
+ Running other applications simultaneously may negatively impact the performance of this script on Windows.
+
+
+3. Usage
+--------
+To Start: Double-click on Start_GUI_ .py
+
+3.1 EC Master Setup Tab
+------------------------
+This tab is used to configure the EtherCAT communication environment before starting the system. Also allows saving/loading configurations.
+
+All other tabs are activated after the communication with the drives has been successfully established.
+
+A. General Settings
+-------------------
+1. **Adapter ID**: Launches a tool to detect available Ethernet interfaces. Select the one connected to your LinMot drive(s).
+2. **Number of Devices**: Enter the number of LinMot drives connected to the EtherCAT network.
+3. **Cycle Time [ms]**: Defines the communication interval in milliseconds. Recommended minimum:
+   - Windows: ≥ 10 ms
+
+B. Advanced Settings
+--------------------
+These settings apply globally to all connected drives:
+1. **Number of Monitoring Channels**: Set the number of input channels (0–4) used for monitoring drive data.
+2. **Number of Parameter Channels**: Set the number of output channels (0–4) used for sending parameters to the drives.
+
+C. Optional Drive Settings
+--------------------------
+For each drive, a dedicated tab is created with the following configurable fields:
+1. **Drive Name**: Optional label for identifying the drive.
+2. **Motor Type**: Choose between “Linear” or “Rotary”.
+3. **Monitoring Channels**: For each channel, you can specify:
+   - UPID (User Parameter ID)
+   - Custom name
+4. **Parameter Channels**: Similarly, define UPIDs and names for each parameter channel.
+These settings are optional but useful for organizing and labeling drive-specific data.
+
+3.2 Control Status Tab
+-----------------------
+Monitor real-time drive status (e.g., operation enabled, homed, motion active) and perform basic control actions like switching on, homing, and error acknowledgment.
+
+3.3 Simple Motion Tab
+---------------------
+The Simple Motion tab provides a flexible interface for sending motion commands and configuring drive parameters for individual LinMot drives. It is designed for quick testing and manual control of motion profiles without needing to write code.
+
+This tab includes:
+- Drive selection
+- Different motion types (Absolute_VAI, Relative_VAI, ...)
+- Position, speed, acceleration, deceleration, and jerk inputs
+- Manual control word and parameter word configuration
+- Parameter access for reading/writing UPIDs
+
+3.4 Motion Profile Tab
+-----------------------
+Execute predefined motion sequences for one or two drives. Useful for demonstration and testing.
+Important Note: Stroke of >50 mm is required for proper motion execution.
+
+3.5 Oscilloscope Tab
+---------------------
+Visualize drive signals such as position and current. Supports signal selection and CSV export.
+Note: The displayed data is lagging behind.
+
+3.6 UI Options Tab
+-------------------
+Customize the appearance (light/dark mode) and UI scaling.
+Allows setting the update frequency for data refresh.
+
+
+4. Key Features
+---------------
+- Modular tabbed interface for easy navigation.
+- Real-time EtherCAT communication with LinMot drives.
+- Thread-safe data handling and background processing.
+- User feedback and logging for improved diagnostics.
+
+
