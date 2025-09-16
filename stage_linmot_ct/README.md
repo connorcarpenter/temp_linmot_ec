@@ -1,10 +1,91 @@
-# stage_linmot_ct
+# Stage LinMot CT (Command Table)
 
-High-level motion control layer that replaces LinMot Command Tables with clear, blocking verbs. This module sits between `stage_linmot_app` (gRPC service) and `stage_linmot_drive` (CPython bridge), providing unit conversion, safety guards, and status shaping.
+A comprehensive Go library that replaces LinMot Command Tables with modern, type-safe Go APIs. This module provides high-level motion control, unit conversion, safety guards, and status monitoring for LinMot C1250-EC servo drives over EtherCAT.
 
-## Purpose
+## Overview
 
-The `stage_linmot_ct` module provides a high-level motion control API that replaces LinMot's Command Table functionality with clear, type-safe Go verbs. It handles unit conversion, safety validation, and provides a clean interface for motion control operations.
+The `stage_linmot_ct` module provides a complete replacement for LinMot-Talk Command Tables, offering:
+
+- **Type-Safe Go APIs**: Modern Go interfaces with compile-time type checking
+- **Comprehensive Command Support**: All LinMot Command Table commands implemented
+- **Unit Conversion**: Automatic conversion between different unit systems
+- **Safety Guards**: Built-in safety validation and limit checking
+- **Status Monitoring**: Real-time drive status and execution monitoring
+- **Error Recovery**: Robust error handling and recovery mechanisms
+- **Test-Driven Development**: Comprehensive test coverage and examples
+
+## Quick Start
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    
+    "github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct"
+    "github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/types"
+)
+
+func main() {
+    // Create components
+    driveController := &MyDriveController{}
+    unitConverter := types.NewUnitConverter()
+    conditionEvaluator := types.NewDefaultConditionEvaluator()
+    safetyGuard := stage_linmot_ct.NewSafetyGuard()
+    
+    // Create command table manager
+    manager := stage_linmot_ct.NewCommandTableManager(
+        driveController, unitConverter, conditionEvaluator, safetyGuard,
+    )
+    
+    // Create a command table
+    table := manager.CreateTable("my-table", "My Table", "A simple motion sequence")
+    
+    // Add commands
+    moveCmd := types.NewCommandBuilder().
+        WithID(1).
+        WithType(types.CmdMoveAbsolute).
+        WithParameter("position", types.NewPositionValue(100.0, types.PositionUnitCounts)).
+        WithParameter("velocity", types.NewVelocityValue(50.0, types.VelocityUnitCountsS)).
+        Build()
+    
+    manager.AddCommand(table, moveCmd)
+    
+    // Execute the table
+    ctx := context.Background()
+    err := manager.StartExecution(ctx, table)
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    // Wait for completion
+    for {
+        status := manager.GetExecutionStatus()
+        if status.State == types.StateCompleted {
+            break
+        }
+        if status.State == types.StateError {
+            log.Fatal("Execution failed:", status.Error)
+        }
+    }
+}
+```
+
+## Documentation
+
+- **[API Documentation](API_DOCUMENTATION.md)**: Complete API reference with examples
+- **[Best Practices](BEST_PRACTICES.md)**: Guidelines for writing robust code
+- **[Troubleshooting](TROUBLESHOOTING.md)**: Common issues and solutions
+- **[Command Table Reference](LINMOT_COMMAND_TABLE_REFERENCE.md)**: LinMot Command Table documentation
+- **[Implementation Plan](IMPLEMENTATION_PLAN.md)**: Development roadmap and phases
+
+## Examples
+
+- **[Simple Motion](examples/simple_motion/main.go)**: Basic motion sequence
+- **[I/O Control](examples/io_control/main.go)**: Digital and analog I/O operations
+- **[Force Control](examples/force_control/main.go)**: Force control operations
+- **[Loop and Jump](examples/loop_jump/main.go)**: Loop and conditional execution
 
 ## Architecture
 
