@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/commands"
+	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/safety"
 	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/types"
 )
 
@@ -154,6 +155,7 @@ type DefaultExecutionEngine struct {
 	variables       map[string]interface{}
 	commandRegistry *commands.CommandRegistry
 	conditionEvaluator types.ConditionEvaluator
+	safetyGuard     *safety.SafetyGuard
 	
 	// Control channels
 	pauseChan  chan struct{}
@@ -163,8 +165,8 @@ type DefaultExecutionEngine struct {
 }
 
 // NewDefaultExecutionEngine creates a new DefaultExecutionEngine
-func NewDefaultExecutionEngine(driveController DriveController, conditionEvaluator types.ConditionEvaluator, unitConverter *types.UnitConverter) *DefaultExecutionEngine {
-	commandRegistry := commands.NewCommandRegistry(driveController, unitConverter)
+func NewDefaultExecutionEngine(driveController DriveController, conditionEvaluator types.ConditionEvaluator, unitConverter *types.UnitConverter, safetyGuard *safety.SafetyGuard) *DefaultExecutionEngine {
+	commandRegistry := commands.NewCommandRegistry(driveController, unitConverter, safetyGuard)
 	
 	return &DefaultExecutionEngine{
 		state:             StateIdle,
@@ -172,6 +174,7 @@ func NewDefaultExecutionEngine(driveController DriveController, conditionEvaluat
 		variables:         make(map[string]interface{}),
 		commandRegistry:   commandRegistry,
 		conditionEvaluator: conditionEvaluator,
+		safetyGuard:       safetyGuard,
 		pauseChan:         make(chan struct{}),
 		resumeChan:        make(chan struct{}),
 		stopChan:          make(chan struct{}),

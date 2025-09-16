@@ -8,10 +8,11 @@ import (
 	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/types"
 )
 
+
 func TestNewForceCommandExecutor(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewForceCommandExecutor(driveController, unitConverter)
+	executor := NewForceCommandExecutor(driveController, unitConverter, nil)
 
 	if executor == nil {
 		t.Fatal("Expected non-nil executor")
@@ -29,7 +30,7 @@ func TestNewForceCommandExecutor(t *testing.T) {
 func TestForceCommandExecutor_ExecuteForceControlOn(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewForceCommandExecutor(driveController, unitConverter)
+	executor := NewForceCommandExecutor(driveController, unitConverter, nil)
 
 	command := types.NewCommandBuilder().
 		WithID(1).
@@ -45,7 +46,7 @@ func TestForceCommandExecutor_ExecuteForceControlOn(t *testing.T) {
 func TestForceCommandExecutor_ExecuteForceControlOff(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewForceCommandExecutor(driveController, unitConverter)
+	executor := NewForceCommandExecutor(driveController, unitConverter, nil)
 
 	command := types.NewCommandBuilder().
 		WithID(1).
@@ -61,7 +62,7 @@ func TestForceCommandExecutor_ExecuteForceControlOff(t *testing.T) {
 func TestForceCommandExecutor_ExecuteSetForce(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewForceCommandExecutor(driveController, unitConverter)
+	executor := NewForceCommandExecutor(driveController, unitConverter, nil)
 
 	command := types.NewCommandBuilder().
 		WithID(1).
@@ -83,7 +84,7 @@ func TestForceCommandExecutor_ExecuteSetForce(t *testing.T) {
 }
 
 func TestForceCommandExecutor_ValidateForceCommand(t *testing.T) {
-	executor := NewForceCommandExecutor(NewMockDriveController(), types.NewUnitConverter())
+	executor := NewForceCommandExecutor(NewMockDriveController(), types.NewUnitConverter(), nil)
 
 	tests := []struct {
 		name    string
@@ -144,7 +145,7 @@ func TestForceCommandExecutor_ValidateForceCommand(t *testing.T) {
 }
 
 func TestForceCommandExecutor_GetForceCommandInfo(t *testing.T) {
-	executor := NewForceCommandExecutor(NewMockDriveController(), types.NewUnitConverter())
+	executor := NewForceCommandExecutor(NewMockDriveController(), types.NewUnitConverter(), nil)
 
 	tests := []struct {
 		commandType types.CommandType
@@ -201,7 +202,7 @@ func TestForceCommandExecutor_ExecuteForceControlOn_Error(t *testing.T) {
 	driveController := NewMockDriveController()
 	driveController.SetError(errors.New("drive error"))
 	unitConverter := types.NewUnitConverter()
-	executor := NewForceCommandExecutor(driveController, unitConverter)
+	executor := NewForceCommandExecutor(driveController, unitConverter, nil)
 
 	command := types.NewCommandBuilder().
 		WithID(1).
@@ -221,7 +222,7 @@ func TestForceCommandExecutor_ExecuteForceControlOn_Error(t *testing.T) {
 func TestForceCommandExecutor_ExecuteSetForce_MissingParameter(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewForceCommandExecutor(driveController, unitConverter)
+	executor := NewForceCommandExecutor(driveController, unitConverter, nil)
 
 	command := types.NewCommandBuilder().
 		WithID(1).

@@ -11,7 +11,7 @@ func TestNewCommandRegistry(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
 	
-	registry := NewCommandRegistry(driveController, unitConverter)
+	registry := NewCommandRegistry(driveController, unitConverter, nil)
 	
 	if registry == nil {
 		t.Fatal("NewCommandRegistry returned nil")
@@ -56,10 +56,10 @@ func TestNewCommandRegistry(t *testing.T) {
 func TestCommandRegistry_RegisterExecutor(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	registry := NewCommandRegistry(driveController, unitConverter)
+	registry := NewCommandRegistry(driveController, unitConverter, nil)
 	
 	// Create a custom executor
-	customExecutor := NewMotionCommandExecutor(driveController, unitConverter)
+	customExecutor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	// Register a new command type (using a non-standard type for testing)
 	customCommandType := types.CommandType(999)
@@ -77,7 +77,7 @@ func TestCommandRegistry_RegisterExecutor(t *testing.T) {
 func TestCommandRegistry_GetExecutor(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	registry := NewCommandRegistry(driveController, unitConverter)
+	registry := NewCommandRegistry(driveController, unitConverter, nil)
 	
 	// Test existing command
 	executor, err := registry.GetExecutor(types.CmdMoveAbsolute)
@@ -104,7 +104,7 @@ func TestCommandRegistry_GetExecutor(t *testing.T) {
 func TestCommandRegistry_ExecuteCommand(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	registry := NewCommandRegistry(driveController, unitConverter)
+	registry := NewCommandRegistry(driveController, unitConverter, nil)
 	
 	// Create a move absolute command
 	command := types.NewCommandBuilder().
@@ -132,7 +132,7 @@ func TestCommandRegistry_ExecuteCommand(t *testing.T) {
 func TestCommandRegistry_ExecuteCommand_UnsupportedCommand(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	registry := NewCommandRegistry(driveController, unitConverter)
+	registry := NewCommandRegistry(driveController, unitConverter, nil)
 	
 	// Create an unsupported command (use a command type that doesn't exist)
 	unsupportedCommandType := types.CommandType(999)
@@ -155,7 +155,7 @@ func TestCommandRegistry_ExecuteCommand_UnsupportedCommand(t *testing.T) {
 func TestCommandRegistry_ValidateCommand(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	registry := NewCommandRegistry(driveController, unitConverter)
+	registry := NewCommandRegistry(driveController, unitConverter, nil)
 	
 	tests := []struct {
 		name    string
@@ -225,7 +225,7 @@ func TestCommandRegistry_ValidateCommand(t *testing.T) {
 func TestCommandRegistry_GetCommandInfo(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	registry := NewCommandRegistry(driveController, unitConverter)
+	registry := NewCommandRegistry(driveController, unitConverter, nil)
 	
 	tests := []struct {
 		commandType types.CommandType
@@ -268,7 +268,7 @@ func TestCommandRegistry_GetCommandInfo(t *testing.T) {
 func TestCommandRegistry_GetSupportedCommandTypes(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	registry := NewCommandRegistry(driveController, unitConverter)
+	registry := NewCommandRegistry(driveController, unitConverter, nil)
 	
 	commandTypes := registry.GetSupportedCommandTypes()
 	
@@ -327,7 +327,7 @@ func TestCommandRegistry_GetSupportedCommandTypes(t *testing.T) {
 func TestCommandRegistry_ListCommandInfo(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	registry := NewCommandRegistry(driveController, unitConverter)
+	registry := NewCommandRegistry(driveController, unitConverter, nil)
 	
 	info := registry.ListCommandInfo()
 	

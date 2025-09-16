@@ -59,13 +59,6 @@ func (mdc *MockDriveController) SetAnalogInput(input int, value float64) {
 	mdc.analogInputs[input] = value
 }
 
-func (mdc *MockDriveController) SetDigitalOutput(output int, value bool) {
-	mdc.digitalOutputs[output] = value
-}
-
-func (mdc *MockDriveController) SetAnalogOutput(output int, value float64) {
-	mdc.analogOutputs[output] = value
-}
 
 func (mdc *MockDriveController) SetDriveState(state types.DriveState) {
 	mdc.driveState = state
@@ -159,47 +152,6 @@ func (mdc *MockDriveController) WaitForce(ctx context.Context, force float64, to
 	return nil
 }
 
-func (mdc *MockDriveController) SetDigitalOutput(ctx context.Context, output int, value bool) error {
-	if mdc.error != nil {
-		return mdc.error
-	}
-	mdc.digitalInputs[output] = value
-	return nil
-}
-
-func (mdc *MockDriveController) ClearDigitalOutput(ctx context.Context, output int) error {
-	if mdc.error != nil {
-		return mdc.error
-	}
-	mdc.digitalInputs[output] = false
-	return nil
-}
-
-func (mdc *MockDriveController) SetAnalogOutput(ctx context.Context, output int, value float64) error {
-	if mdc.error != nil {
-		return mdc.error
-	}
-	mdc.analogInputs[output] = value
-	return nil
-}
-
-func (mdc *MockDriveController) WaitDigitalInput(ctx context.Context, input int, value bool, timeout time.Duration) error {
-	if mdc.error != nil {
-		return mdc.error
-	}
-	// Simulate waiting for digital input
-	time.Sleep(10 * time.Millisecond)
-	return nil
-}
-
-func (mdc *MockDriveController) WaitAnalogInput(ctx context.Context, input int, value float64, tolerance float64, timeout time.Duration) error {
-	if mdc.error != nil {
-		return mdc.error
-	}
-	// Simulate waiting for analog input
-	time.Sleep(10 * time.Millisecond)
-	return nil
-}
 
 func (mdc *MockDriveController) Home(ctx context.Context) error {
 	if mdc.error != nil {
@@ -358,6 +310,11 @@ func (mdc *MockDriveController) WaitAnalogInput(ctx context.Context, input int, 
 	return nil
 }
 
+
+
+
+
+
 func (mdc *MockDriveController) GetDriveState(ctx context.Context) (types.DriveState, error) {
 	if mdc.error != nil {
 		return types.DriveState(0), mdc.error
@@ -441,7 +398,7 @@ func TestNewDefaultExecutionEngine(t *testing.T) {
 	conditionEvaluator := NewMockConditionEvaluator()
 	unitConverter := types.NewUnitConverter()
 
-	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter)
+	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter, nil)
 
 	if engine == nil {
 		t.Fatal("NewDefaultExecutionEngine returned nil")
@@ -459,7 +416,7 @@ func TestDefaultExecutionEngine_Execute(t *testing.T) {
 	driveController := NewMockDriveController()
 	conditionEvaluator := NewMockConditionEvaluator()
 	unitConverter := types.NewUnitConverter()
-	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter)
+	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter, nil)
 
 	// Create a simple command table
 	command := types.NewCommandBuilder().
@@ -510,7 +467,7 @@ func TestDefaultExecutionEngine_Execute_EmptyTable(t *testing.T) {
 	driveController := NewMockDriveController()
 	conditionEvaluator := NewMockConditionEvaluator()
 	unitConverter := types.NewUnitConverter()
-	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter)
+	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter, nil)
 
 	// Create empty command table
 	table := types.NewCommandTableBuilder().
@@ -531,7 +488,7 @@ func TestDefaultExecutionEngine_Execute_NilTable(t *testing.T) {
 	driveController := NewMockDriveController()
 	conditionEvaluator := NewMockConditionEvaluator()
 	unitConverter := types.NewUnitConverter()
-	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter)
+	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter, nil)
 
 	err := engine.Execute(context.Background(), nil)
 	if err == nil {
@@ -547,7 +504,7 @@ func TestDefaultExecutionEngine_Execute_AlreadyRunning(t *testing.T) {
 	driveController := NewMockDriveController()
 	conditionEvaluator := NewMockConditionEvaluator()
 	unitConverter := types.NewUnitConverter()
-	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter)
+	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter, nil)
 
 	// Create a command table
 	command := types.NewCommandBuilder().
@@ -582,7 +539,7 @@ func TestDefaultExecutionEngine_PauseResume(t *testing.T) {
 	driveController := NewMockDriveController()
 	conditionEvaluator := NewMockConditionEvaluator()
 	unitConverter := types.NewUnitConverter()
-	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter)
+	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter, nil)
 
 	// Create a command table with wait command
 	command := types.NewCommandBuilder().
@@ -643,7 +600,7 @@ func TestDefaultExecutionEngine_Stop(t *testing.T) {
 	driveController := NewMockDriveController()
 	conditionEvaluator := NewMockConditionEvaluator()
 	unitConverter := types.NewUnitConverter()
-	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter)
+	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter, nil)
 
 	// Create a command table with wait command
 	command := types.NewCommandBuilder().
@@ -683,7 +640,7 @@ func TestDefaultExecutionEngine_IsRunning(t *testing.T) {
 	driveController := NewMockDriveController()
 	conditionEvaluator := NewMockConditionEvaluator()
 	unitConverter := types.NewUnitConverter()
-	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter)
+	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter, nil)
 
 	// Initially not running
 	if engine.IsRunning() {
@@ -732,7 +689,7 @@ func TestDefaultExecutionEngine_GetCurrentCommand(t *testing.T) {
 	driveController := NewMockDriveController()
 	conditionEvaluator := NewMockConditionEvaluator()
 	unitConverter := types.NewUnitConverter()
-	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter)
+	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter, nil)
 
 	// Initially no current command
 	if engine.GetCurrentCommand() != nil {
@@ -784,7 +741,7 @@ func TestDefaultExecutionEngine_CommandFailure(t *testing.T) {
 	driveController := NewMockDriveController()
 	conditionEvaluator := NewMockConditionEvaluator()
 	unitConverter := types.NewUnitConverter()
-	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter)
+	engine := NewDefaultExecutionEngine(driveController, conditionEvaluator, unitConverter, nil)
 
 	// Set drive controller to return error
 	driveController.SetError(errors.New("drive error"))

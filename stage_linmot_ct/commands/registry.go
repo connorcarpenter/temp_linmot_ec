@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/safety"
 	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/types"
 )
 
@@ -16,17 +17,19 @@ type CommandExecutor interface {
 
 // CommandRegistry manages command executors
 type CommandRegistry struct {
-	executors map[types.CommandType]CommandExecutor
+	executors   map[types.CommandType]CommandExecutor
+	safetyGuard *safety.SafetyGuard
 }
 
 // NewCommandRegistry creates a new command registry
-func NewCommandRegistry(driveController types.DriveController, unitConverter *types.UnitConverter) *CommandRegistry {
+func NewCommandRegistry(driveController types.DriveController, unitConverter *types.UnitConverter, safetyGuard *safety.SafetyGuard) *CommandRegistry {
 	registry := &CommandRegistry{
-		executors: make(map[types.CommandType]CommandExecutor),
+		executors:   make(map[types.CommandType]CommandExecutor),
+		safetyGuard: safetyGuard,
 	}
 	
 	// Register motion command executor
-	motionExecutor := NewMotionCommandExecutor(driveController, unitConverter)
+	motionExecutor := NewMotionCommandExecutor(driveController, unitConverter, safetyGuard)
 	registry.RegisterExecutor(types.CmdMoveAbsolute, motionExecutor)
 	registry.RegisterExecutor(types.CmdMoveRelative, motionExecutor)
 	registry.RegisterExecutor(types.CmdMoveIncremental, motionExecutor)
@@ -65,7 +68,7 @@ func NewCommandRegistry(driveController types.DriveController, unitConverter *ty
 	registry.RegisterExecutor(types.CmdLoadConfiguration, systemExecutor)
 	
 	// Register force control command executor
-	forceExecutor := NewForceCommandExecutor(driveController, unitConverter)
+	forceExecutor := NewForceCommandExecutor(driveController, unitConverter, safetyGuard)
 	registry.RegisterExecutor(types.CmdForceControlOn, forceExecutor)
 	registry.RegisterExecutor(types.CmdForceControlOff, forceExecutor)
 	registry.RegisterExecutor(types.CmdSetForce, forceExecutor)

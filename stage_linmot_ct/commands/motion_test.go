@@ -307,7 +307,7 @@ func TestNewMotionCommandExecutor(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
 	
-	executor := NewMotionCommandExecutor(driveController, unitConverter)
+	executor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	if executor == nil {
 		t.Fatal("NewMotionCommandExecutor returned nil")
@@ -325,7 +325,7 @@ func TestNewMotionCommandExecutor(t *testing.T) {
 func TestMotionCommandExecutor_ExecuteMoveAbsolute(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewMotionCommandExecutor(driveController, unitConverter)
+	executor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	// Create a move absolute command
 	command := types.NewCommandBuilder().
@@ -354,7 +354,7 @@ func TestMotionCommandExecutor_ExecuteMoveAbsolute(t *testing.T) {
 func TestMotionCommandExecutor_ExecuteMoveRelative(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewMotionCommandExecutor(driveController, unitConverter)
+	executor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	// Set initial position
 	driveController.SetPosition(5000.0) // 5mm in counts
@@ -386,7 +386,7 @@ func TestMotionCommandExecutor_ExecuteMoveRelative(t *testing.T) {
 func TestMotionCommandExecutor_ExecuteMoveIncremental(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewMotionCommandExecutor(driveController, unitConverter)
+	executor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	// Set initial position
 	driveController.SetPosition(3000.0) // 3mm in counts
@@ -418,7 +418,7 @@ func TestMotionCommandExecutor_ExecuteMoveIncremental(t *testing.T) {
 func TestMotionCommandExecutor_ExecuteJog(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewMotionCommandExecutor(driveController, unitConverter)
+	executor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	// Create a jog command
 	command := types.NewCommandBuilder().
@@ -444,7 +444,7 @@ func TestMotionCommandExecutor_ExecuteJog(t *testing.T) {
 func TestMotionCommandExecutor_ExecuteStop(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewMotionCommandExecutor(driveController, unitConverter)
+	executor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	// Set initial velocity
 	driveController.SetVelocity(1000.0)
@@ -470,7 +470,7 @@ func TestMotionCommandExecutor_ExecuteStop(t *testing.T) {
 func TestMotionCommandExecutor_ValidateMotionCommand(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewMotionCommandExecutor(driveController, unitConverter)
+	executor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	tests := []struct {
 		name    string
@@ -552,7 +552,7 @@ func TestMotionCommandExecutor_ValidateMotionCommand(t *testing.T) {
 func TestMotionCommandExecutor_GetMotionCommandInfo(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewMotionCommandExecutor(driveController, unitConverter)
+	executor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	tests := []struct {
 		commandType types.CommandType
@@ -628,7 +628,7 @@ func TestMotionCommandExecutor_GetMotionCommandInfo(t *testing.T) {
 func TestMotionCommandExecutor_ExecuteMoveAbsolute_Error(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewMotionCommandExecutor(driveController, unitConverter)
+	executor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	// Set drive controller to return error
 	driveController.SetError(errors.New("drive error"))
@@ -657,7 +657,7 @@ func TestMotionCommandExecutor_ExecuteMoveAbsolute_Error(t *testing.T) {
 func TestMotionCommandExecutor_ExecuteMoveAbsolute_MissingParameter(t *testing.T) {
 	driveController := NewMockDriveController()
 	unitConverter := types.NewUnitConverter()
-	executor := NewMotionCommandExecutor(driveController, unitConverter)
+	executor := NewMotionCommandExecutor(driveController, unitConverter, nil)
 	
 	// Create a move absolute command with missing position parameter
 	command := types.NewCommandBuilder().

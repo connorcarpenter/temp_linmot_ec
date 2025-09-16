@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/safety"
 	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/types"
 )
 
@@ -11,10 +12,18 @@ import (
 type ForceCommandExecutor struct {
 	driveController types.DriveController
 	unitConverter   *types.UnitConverter
+	safetyGuard     *safety.SafetyGuard
 }
 
 // Execute implements CommandExecutor interface
 func (fce *ForceCommandExecutor) Execute(ctx context.Context, command *types.Command) error {
+	// Validate safety limits before execution
+	if fce.safetyGuard != nil {
+		if err := fce.safetyGuard.ValidateForceCommand(command, fce.unitConverter); err != nil {
+			return fmt.Errorf("safety validation failed: %w", err)
+		}
+	}
+	
 	switch command.Type {
 	case types.CmdForceControlOn:
 		return fce.ExecuteForceControlOn(ctx, command)
@@ -38,10 +47,11 @@ func (fce *ForceCommandExecutor) GetCommandInfo(commandType types.CommandType) (
 }
 
 // NewForceCommandExecutor creates a new force control command executor
-func NewForceCommandExecutor(driveController types.DriveController, unitConverter *types.UnitConverter) *ForceCommandExecutor {
+func NewForceCommandExecutor(driveController types.DriveController, unitConverter *types.UnitConverter, safetyGuard *safety.SafetyGuard) *ForceCommandExecutor {
 	return &ForceCommandExecutor{
 		driveController: driveController,
 		unitConverter:   unitConverter,
+		safetyGuard:     safetyGuard,
 	}
 }
 
