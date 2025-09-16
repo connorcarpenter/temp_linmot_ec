@@ -64,6 +64,18 @@ func NewCommandRegistry(driveController types.DriveController, unitConverter *ty
 	registry.RegisterExecutor(types.CmdSaveConfiguration, systemExecutor)
 	registry.RegisterExecutor(types.CmdLoadConfiguration, systemExecutor)
 	
+	// Register force control command executor
+	forceExecutor := NewForceCommandExecutor(driveController, unitConverter)
+	registry.RegisterExecutor(types.CmdForceControlOn, forceExecutor)
+	registry.RegisterExecutor(types.CmdForceControlOff, forceExecutor)
+	registry.RegisterExecutor(types.CmdSetForce, forceExecutor)
+	
+	// Register data acquisition command executor
+	dataExecutor := NewDataCommandExecutor(driveController, unitConverter)
+	registry.RegisterExecutor(types.CmdStartOscilloscope, dataExecutor)
+	registry.RegisterExecutor(types.CmdStopOscilloscope, dataExecutor)
+	registry.RegisterExecutor(types.CmdSaveData, dataExecutor)
+	
 	return registry
 }
 
@@ -161,6 +173,12 @@ func (cr *CommandRegistry) ListCommandInfo() map[types.CommandType]CommandInfo {
 		types.CmdReset: "Reset",
 		types.CmdSaveConfiguration: "SaveConfiguration",
 		types.CmdLoadConfiguration: "LoadConfiguration",
+		types.CmdForceControlOn: "ForceControlOn",
+		types.CmdForceControlOff: "ForceControlOff",
+		types.CmdSetForce: "SetForce",
+		types.CmdStartOscilloscope: "StartOscilloscope",
+		types.CmdStopOscilloscope: "StopOscilloscope",
+		types.CmdSaveData: "SaveData",
 	}
 	
 	for commandType, executor := range cr.executors {

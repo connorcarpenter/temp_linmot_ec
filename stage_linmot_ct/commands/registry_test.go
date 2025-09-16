@@ -47,7 +47,7 @@ func TestNewCommandRegistry(t *testing.T) {
 	}
 	
 	// Check total count
-	expectedCount := 24 // 5 motion + 4 control + 5 I/O + 6 loop/jump + 4 system
+	expectedCount := 30 // 5 motion + 4 control + 5 I/O + 6 loop/jump + 4 system + 3 force + 3 data
 	if registry.GetCommandCount() != expectedCount {
 		t.Errorf("Expected %d commands, got %d", expectedCount, registry.GetCommandCount())
 	}
@@ -69,8 +69,8 @@ func TestCommandRegistry_RegisterExecutor(t *testing.T) {
 		t.Error("Custom command not registered")
 	}
 	
-	if registry.GetCommandCount() != 25 { // 24 original + 1 custom
-		t.Errorf("Expected 25 commands, got %d", registry.GetCommandCount())
+	if registry.GetCommandCount() != 31 { // 30 original + 1 custom
+		t.Errorf("Expected 31 commands, got %d", registry.GetCommandCount())
 	}
 }
 
@@ -272,8 +272,8 @@ func TestCommandRegistry_GetSupportedCommandTypes(t *testing.T) {
 	
 	commandTypes := registry.GetSupportedCommandTypes()
 	
-	if len(commandTypes) != 24 { // 5 motion + 4 control + 5 I/O + 6 loop/jump + 4 system
-		t.Errorf("Expected 24 command types, got %d", len(commandTypes))
+	if len(commandTypes) != 30 { // 5 motion + 4 control + 5 I/O + 6 loop/jump + 4 system + 3 force + 3 data
+		t.Errorf("Expected 30 command types, got %d", len(commandTypes))
 	}
 	
 	// Check that all expected types are present
@@ -307,6 +307,14 @@ func TestCommandRegistry_GetSupportedCommandTypes(t *testing.T) {
 		types.CmdReset:              true,
 		types.CmdSaveConfiguration:  true,
 		types.CmdLoadConfiguration:  true,
+		// Force Control commands
+		types.CmdForceControlOn:     true,
+		types.CmdForceControlOff:    true,
+		types.CmdSetForce:           true,
+		// Data Acquisition commands
+		types.CmdStartOscilloscope:  true,
+		types.CmdStopOscilloscope:   true,
+		types.CmdSaveData:           true,
 	}
 	
 	for _, cmdType := range commandTypes {
@@ -323,8 +331,8 @@ func TestCommandRegistry_ListCommandInfo(t *testing.T) {
 	
 	info := registry.ListCommandInfo()
 	
-	if len(info) != 24 { // 5 motion + 4 control + 5 I/O + 6 loop/jump + 4 system
-		t.Errorf("Expected 24 command info entries, got %d", len(info))
+	if len(info) != 30 { // 5 motion + 4 control + 5 I/O + 6 loop/jump + 4 system + 3 force + 3 data
+		t.Errorf("Expected 30 command info entries, got %d", len(info))
 	}
 	
 	// Check that all entries have valid information
