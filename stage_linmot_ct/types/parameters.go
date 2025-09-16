@@ -332,6 +332,11 @@ func (pe *ParameterExtractor) ExtractPosition(params map[string]interface{}, key
 		return nil, fmt.Errorf("parameter %s not found", key)
 	}
 	
+	// Check if it's already a PositionValue
+	if posValue, ok := value.(*PositionValue); ok {
+		return posValue, nil
+	}
+	
 	posMap, ok := value.(map[string]interface{})
 	if !ok {
 		// Try to extract as simple float
@@ -371,6 +376,11 @@ func (pe *ParameterExtractor) ExtractVelocity(params map[string]interface{}, key
 		return nil, fmt.Errorf("parameter %s not found", key)
 	}
 	
+	// Check if it's already a VelocityValue
+	if velValue, ok := value.(*VelocityValue); ok {
+		return velValue, nil
+	}
+	
 	velMap, ok := value.(map[string]interface{})
 	if !ok {
 		// Try to extract as simple float
@@ -408,6 +418,11 @@ func (pe *ParameterExtractor) ExtractTime(params map[string]interface{}, key str
 	value, ok := params[key]
 	if !ok {
 		return nil, fmt.Errorf("parameter %s not found", key)
+	}
+	
+	// Check if it's already a TimeValue
+	if timeValue, ok := value.(*TimeValue); ok {
+		return timeValue, nil
 	}
 	
 	timeMap, ok := value.(map[string]interface{})

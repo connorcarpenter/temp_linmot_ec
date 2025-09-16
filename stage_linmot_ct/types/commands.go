@@ -254,6 +254,54 @@ func (c *Command) Validate() error {
 	return nil
 }
 
+// DriveController defines the interface for controlling the LinMot drive
+type DriveController interface {
+	// Motion commands
+	MoveAbsolute(ctx context.Context, position float64, velocity float64, acceleration float64, jerk float64) error
+	MoveRelative(ctx context.Context, distance float64, velocity float64, acceleration float64, jerk float64) error
+	MoveIncremental(ctx context.Context, distance float64, velocity float64, acceleration float64, jerk float64) error
+	Jog(ctx context.Context, velocity float64) error
+	Stop(ctx context.Context) error
+	
+	// Wait commands
+	Wait(ctx context.Context, duration time.Duration) error
+	WaitPosition(ctx context.Context, position float64, tolerance float64, timeout time.Duration) error
+	WaitVelocity(ctx context.Context, velocity float64, tolerance float64, timeout time.Duration) error
+	WaitForce(ctx context.Context, force float64, tolerance float64, timeout time.Duration) error
+	
+	// I/O commands
+	SetDigitalOutput(ctx context.Context, output int, value bool) error
+	ClearDigitalOutput(ctx context.Context, output int) error
+	SetAnalogOutput(ctx context.Context, output int, value float64) error
+	WaitDigitalInput(ctx context.Context, input int, value bool, timeout time.Duration) error
+	WaitAnalogInput(ctx context.Context, input int, value float64, tolerance float64, timeout time.Duration) error
+	
+	// System commands
+	Home(ctx context.Context) error
+	Reset(ctx context.Context) error
+	SaveConfiguration(ctx context.Context) error
+	LoadConfiguration(ctx context.Context) error
+	
+	// Force control commands
+	ForceControlOn(ctx context.Context) error
+	ForceControlOff(ctx context.Context) error
+	SetForce(ctx context.Context, force float64) error
+	
+	// Data acquisition commands
+	StartOscilloscope(ctx context.Context) error
+	StopOscilloscope(ctx context.Context) error
+	SaveData(ctx context.Context, filename string) error
+	
+	// Status queries
+	GetPosition(ctx context.Context) (float64, error)
+	GetVelocity(ctx context.Context) (float64, error)
+	GetForce(ctx context.Context) (float64, error)
+	GetDigitalInput(ctx context.Context, input int) (bool, error)
+	GetAnalogInput(ctx context.Context, input int) (float64, error)
+	GetDriveState(ctx context.Context) (DriveState, error)
+	IsMotionComplete(ctx context.Context) (bool, error)
+}
+
 // CommandTableBuilder provides a fluent interface for building command tables
 type CommandTableBuilder struct {
 	table *CommandTable

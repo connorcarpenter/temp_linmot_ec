@@ -231,7 +231,7 @@ func (ctm *CommandTableManager) StartExecution(ctx context.Context, table *types
 		// Implementation depends on the specific unit system requirements
 	}
 
-	return ctm.executionEngine.Start(ctx, table)
+	return ctm.executionEngine.Execute(ctx, table)
 }
 
 // PauseExecution pauses execution
@@ -260,23 +260,27 @@ func (ctm *CommandTableManager) GetCurrentCommand() *types.Command {
 }
 
 // GetVariables returns the current variables
+// TODO: Implement variable management in ExecutionEngine
 func (ctm *CommandTableManager) GetVariables() map[string]interface{} {
-	return ctm.executionEngine.GetVariables()
+	return make(map[string]interface{})
 }
 
 // SetVariable sets a variable value
+// TODO: Implement variable management in ExecutionEngine
 func (ctm *CommandTableManager) SetVariable(name string, value interface{}) error {
-	return ctm.executionEngine.SetVariable(name, value)
+	return fmt.Errorf("variable management not yet implemented")
 }
 
 // GetExecutionHistory returns the execution history
-func (ctm *CommandTableManager) GetExecutionHistory() []execution.ExecutionStep {
-	return ctm.executionEngine.GetExecutionHistory()
+// TODO: Implement execution history in ExecutionEngine
+func (ctm *CommandTableManager) GetExecutionHistory() []execution.ExecutionResult {
+	return []execution.ExecutionResult{}
 }
 
 // ClearHistory clears the execution history
+// TODO: Implement execution history in ExecutionEngine
 func (ctm *CommandTableManager) ClearHistory() error {
-	return ctm.executionEngine.ClearHistory()
+	return fmt.Errorf("execution history not yet implemented")
 }
 
 // CommandTableBuilder provides a fluent interface for building command tables

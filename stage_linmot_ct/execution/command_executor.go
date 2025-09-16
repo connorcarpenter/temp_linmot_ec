@@ -133,72 +133,8 @@ func (dee *DefaultExecutionEngine) executeCommand(ctx context.Context, command *
 		}
 	}
 	
-	// Execute command based on type
-	var err error
-	switch command.Type {
-	case types.CmdMoveAbsolute:
-		err = dee.executeMoveAbsolute(ctx, command)
-	case types.CmdMoveRelative:
-		err = dee.executeMoveRelative(ctx, command)
-	case types.CmdMoveIncremental:
-		err = dee.executeMoveIncremental(ctx, command)
-	case types.CmdJog:
-		err = dee.executeJog(ctx, command)
-	case types.CmdStop:
-		err = dee.executeStop(ctx, command)
-	case types.CmdWait:
-		err = dee.executeWait(ctx, command)
-	case types.CmdWaitPosition:
-		err = dee.executeWaitPosition(ctx, command)
-	case types.CmdWaitVelocity:
-		err = dee.executeWaitVelocity(ctx, command)
-	case types.CmdWaitForce:
-		err = dee.executeWaitForce(ctx, command)
-	case types.CmdSetDigitalOutput:
-		err = dee.executeSetDigitalOutput(ctx, command)
-	case types.CmdClearDigitalOutput:
-		err = dee.executeClearDigitalOutput(ctx, command)
-	case types.CmdSetAnalogOutput:
-		err = dee.executeSetAnalogOutput(ctx, command)
-	case types.CmdWaitDigitalInput:
-		err = dee.executeWaitDigitalInput(ctx, command)
-	case types.CmdWaitAnalogInput:
-		err = dee.executeWaitAnalogInput(ctx, command)
-	case types.CmdLoopStart:
-		err = dee.executeLoopStart(ctx, command)
-	case types.CmdLoopEnd:
-		err = dee.executeLoopEnd(ctx, command)
-	case types.CmdLoopBreak:
-		err = dee.executeLoopBreak(ctx, command)
-	case types.CmdJump:
-		err = dee.executeJump(ctx, command)
-	case types.CmdJumpIfTrue:
-		err = dee.executeJumpIfTrue(ctx, command)
-	case types.CmdJumpIfFalse:
-		err = dee.executeJumpIfFalse(ctx, command)
-	case types.CmdHome:
-		err = dee.executeHome(ctx, command)
-	case types.CmdReset:
-		err = dee.executeReset(ctx, command)
-	case types.CmdSaveConfiguration:
-		err = dee.executeSaveConfiguration(ctx, command)
-	case types.CmdLoadConfiguration:
-		err = dee.executeLoadConfiguration(ctx, command)
-	case types.CmdForceControlOn:
-		err = dee.executeForceControlOn(ctx, command)
-	case types.CmdForceControlOff:
-		err = dee.executeForceControlOff(ctx, command)
-	case types.CmdSetForce:
-		err = dee.executeSetForce(ctx, command)
-	case types.CmdStartOscilloscope:
-		err = dee.executeStartOscilloscope(ctx, command)
-	case types.CmdStopOscilloscope:
-		err = dee.executeStopOscilloscope(ctx, command)
-	case types.CmdSaveData:
-		err = dee.executeSaveData(ctx, command)
-	default:
-		err = fmt.Errorf("unsupported command type: %s", command.Type)
-	}
+	// Execute command using the command registry
+	err := dee.commandRegistry.ExecuteCommand(ctx, command)
 	
 	result.Success = err == nil
 	result.Error = err

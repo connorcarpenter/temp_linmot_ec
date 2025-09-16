@@ -383,16 +383,8 @@ func TestNewDefaultExecutionEngine(t *testing.T) {
 		t.Errorf("Expected initial state to be Idle, got %s", engine.state)
 	}
 
-	if engine.driveController != driveController {
-		t.Error("DriveController not set correctly")
-	}
-
-	// Note: Can't compare interface values directly
-	// This is a limitation of the test design
-
-	if engine.unitConverter != unitConverter {
-		t.Error("UnitConverter not set correctly")
-	}
+	// Note: driveController and unitConverter are encapsulated within commandRegistry
+	// This is a limitation of the test design - we can't directly access them
 }
 
 func TestDefaultExecutionEngine_Execute(t *testing.T) {
@@ -755,8 +747,11 @@ func TestDefaultExecutionEngine_CommandFailure(t *testing.T) {
 	defer cancel()
 
 	err = engine.WaitForCompletion(ctx)
-	if err != nil {
-		t.Fatalf("WaitForCompletion failed: %v", err)
+	if err == nil {
+		t.Fatalf("Expected WaitForCompletion to return error, but got nil")
+	}
+	if err.Error() != "drive error" {
+		t.Fatalf("Expected error 'drive error', got: %v", err)
 	}
 
 	// Check final status

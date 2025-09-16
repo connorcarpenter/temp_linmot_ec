@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/commands"
 	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/types"
 )
 
@@ -151,9 +152,8 @@ type DefaultExecutionEngine struct {
 	endTime         time.Time
 	error           error
 	variables       map[string]interface{}
-	driveController DriveController
+	commandRegistry *commands.CommandRegistry
 	conditionEvaluator types.ConditionEvaluator
-	unitConverter   *types.UnitConverter
 	
 	// Control channels
 	pauseChan  chan struct{}
@@ -164,13 +164,14 @@ type DefaultExecutionEngine struct {
 
 // NewDefaultExecutionEngine creates a new DefaultExecutionEngine
 func NewDefaultExecutionEngine(driveController DriveController, conditionEvaluator types.ConditionEvaluator, unitConverter *types.UnitConverter) *DefaultExecutionEngine {
+	commandRegistry := commands.NewCommandRegistry(driveController, unitConverter)
+	
 	return &DefaultExecutionEngine{
 		state:             StateIdle,
 		results:           make([]ExecutionResult, 0),
 		variables:         make(map[string]interface{}),
-		driveController:   driveController,
+		commandRegistry:   commandRegistry,
 		conditionEvaluator: conditionEvaluator,
-		unitConverter:     unitConverter,
 		pauseChan:         make(chan struct{}),
 		resumeChan:        make(chan struct{}),
 		stopChan:          make(chan struct{}),
@@ -227,7 +228,13 @@ func (dee *DefaultExecutionEngine) Pause() error {
 	}
 	
 	dee.state = StatePaused
-	dee.pauseChan <- struct{}{}
+	
+	// Send pause signal in a non-blocking way
+	select {
+	case dee.pauseChan <- struct{}{}:
+	default:
+		// Channel is full or no one is listening, that's okay
+	}
 	
 	return nil
 }
@@ -242,7 +249,13 @@ func (dee *DefaultExecutionEngine) Resume() error {
 	}
 	
 	dee.state = StateRunning
-	dee.resumeChan <- struct{}{}
+	
+	// Send resume signal in a non-blocking way
+	select {
+	case dee.resumeChan <- struct{}{}:
+	default:
+		// Channel is full or no one is listening, that's okay
+	}
 	
 	return nil
 }
