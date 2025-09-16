@@ -47,7 +47,7 @@ func TestNewCommandRegistry(t *testing.T) {
 	}
 	
 	// Check total count
-	expectedCount := len(motionCommands) + len(controlCommands)
+	expectedCount := 24 // 5 motion + 4 control + 5 I/O + 6 loop/jump + 4 system
 	if registry.GetCommandCount() != expectedCount {
 		t.Errorf("Expected %d commands, got %d", expectedCount, registry.GetCommandCount())
 	}
@@ -62,14 +62,15 @@ func TestCommandRegistry_RegisterExecutor(t *testing.T) {
 	customExecutor := NewMotionCommandExecutor(driveController, unitConverter)
 	
 	// Register a new command type (using a non-standard type for testing)
-	registry.RegisterExecutor(types.CmdHome, customExecutor)
+	customCommandType := types.CommandType(999)
+	registry.RegisterExecutor(customCommandType, customExecutor)
 	
-	if !registry.IsCommandSupported(types.CmdHome) {
+	if !registry.IsCommandSupported(customCommandType) {
 		t.Error("Custom command not registered")
 	}
 	
-	if registry.GetCommandCount() != 10 { // 9 original + 1 custom
-		t.Errorf("Expected 10 commands, got %d", registry.GetCommandCount())
+	if registry.GetCommandCount() != 25 { // 24 original + 1 custom
+		t.Errorf("Expected 25 commands, got %d", registry.GetCommandCount())
 	}
 }
 
@@ -88,13 +89,14 @@ func TestCommandRegistry_GetExecutor(t *testing.T) {
 		t.Fatal("GetExecutor returned nil executor")
 	}
 	
-	// Test non-existing command
-	_, err = registry.GetExecutor(types.CmdHome)
+	// Test non-existing command (use a command type that doesn't exist)
+	nonExistentCommand := types.CommandType(999)
+	_, err = registry.GetExecutor(nonExistentCommand)
 	if err == nil {
 		t.Fatal("Expected error for non-existing command, got nil")
 	}
 	
-	if err.Error() != "no executor registered for command type: HO" {
+	if err.Error() != "no executor registered for command type: UNKNOWN" {
 		t.Errorf("Expected specific error message, got %v", err)
 	}
 }
@@ -132,10 +134,11 @@ func TestCommandRegistry_ExecuteCommand_UnsupportedCommand(t *testing.T) {
 	unitConverter := types.NewUnitConverter()
 	registry := NewCommandRegistry(driveController, unitConverter)
 	
-	// Create an unsupported command
+	// Create an unsupported command (use a command type that doesn't exist)
+	unsupportedCommandType := types.CommandType(999)
 	command := types.NewCommandBuilder().
 		WithID(1).
-		WithType(types.CmdHome).
+		WithType(unsupportedCommandType).
 		Build()
 	
 	// Execute the command
@@ -144,7 +147,7 @@ func TestCommandRegistry_ExecuteCommand_UnsupportedCommand(t *testing.T) {
 		t.Fatal("Expected error for unsupported command, got nil")
 	}
 	
-	if err.Error() != "no executor registered for command type: HO" {
+	if err.Error() != "no executor registered for command type: UNKNOWN" {
 		t.Errorf("Expected specific error message, got %v", err)
 	}
 }
@@ -203,7 +206,7 @@ func TestCommandRegistry_ValidateCommand(t *testing.T) {
 			name: "Unsupported command type",
 			command: types.NewCommandBuilder().
 				WithID(1).
-				WithType(types.CmdHome).
+				WithType(types.CommandType(999)).
 				Build(),
 			wantErr: true,
 		},
@@ -237,7 +240,7 @@ func TestCommandRegistry_GetCommandInfo(t *testing.T) {
 			wantErr:     false,
 		},
 		{
-			commandType: types.CmdHome, // Unsupported
+			commandType: types.CommandType(999), // Unsupported
 			wantErr:     true,
 		},
 	}
@@ -269,21 +272,41 @@ func TestCommandRegistry_GetSupportedCommandTypes(t *testing.T) {
 	
 	commandTypes := registry.GetSupportedCommandTypes()
 	
-	if len(commandTypes) != 9 { // 5 motion + 4 control commands
-		t.Errorf("Expected 9 command types, got %d", len(commandTypes))
+	if len(commandTypes) != 24 { // 5 motion + 4 control + 5 I/O + 6 loop/jump + 4 system
+		t.Errorf("Expected 24 command types, got %d", len(commandTypes))
 	}
 	
 	// Check that all expected types are present
 	expectedTypes := map[types.CommandType]bool{
+		// Motion commands
 		types.CmdMoveAbsolute:    true,
 		types.CmdMoveRelative:    true,
 		types.CmdMoveIncremental: true,
 		types.CmdJog:             true,
 		types.CmdStop:            true,
+		// Control commands
 		types.CmdWait:            true,
 		types.CmdWaitPosition:    true,
 		types.CmdWaitVelocity:    true,
 		types.CmdWaitForce:       true,
+		// I/O commands
+		types.CmdSetDigitalOutput:   true,
+		types.CmdClearDigitalOutput: true,
+		types.CmdSetAnalogOutput:    true,
+		types.CmdWaitDigitalInput:   true,
+		types.CmdWaitAnalogInput:    true,
+		// Loop/Jump commands
+		types.CmdLoopStart:    true,
+		types.CmdLoopEnd:      true,
+		types.CmdLoopBreak:    true,
+		types.CmdJump:         true,
+		types.CmdJumpIfTrue:   true,
+		types.CmdJumpIfFalse:  true,
+		// System commands
+		types.CmdHome:               true,
+		types.CmdReset:              true,
+		types.CmdSaveConfiguration:  true,
+		types.CmdLoadConfiguration:  true,
 	}
 	
 	for _, cmdType := range commandTypes {
@@ -300,8 +323,8 @@ func TestCommandRegistry_ListCommandInfo(t *testing.T) {
 	
 	info := registry.ListCommandInfo()
 	
-	if len(info) != 9 { // 5 motion + 4 control commands
-		t.Errorf("Expected 9 command info entries, got %d", len(info))
+	if len(info) != 24 { // 5 motion + 4 control + 5 I/O + 6 loop/jump + 4 system
+		t.Errorf("Expected 24 command info entries, got %d", len(info))
 	}
 	
 	// Check that all entries have valid information

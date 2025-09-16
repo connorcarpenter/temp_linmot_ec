@@ -16,6 +16,8 @@ type MockDriveController struct {
 	force         float64
 	digitalInputs map[int]bool
 	analogInputs  map[int]float64
+	digitalOutputs map[int]bool
+	analogOutputs  map[int]float64
 	driveState    types.DriveState
 	motionComplete bool
 	error         error
@@ -23,9 +25,11 @@ type MockDriveController struct {
 
 func NewMockDriveController() *MockDriveController {
 	return &MockDriveController{
-		digitalInputs: make(map[int]bool),
-		analogInputs:  make(map[int]float64),
-		driveState:    types.DriveStateReady,
+		digitalInputs:  make(map[int]bool),
+		analogInputs:   make(map[int]float64),
+		digitalOutputs: make(map[int]bool),
+		analogOutputs:  make(map[int]float64),
+		driveState:     types.DriveStateReady,
 		motionComplete: true,
 	}
 }
@@ -139,7 +143,7 @@ func (mdc *MockDriveController) SetDigitalOutput(ctx context.Context, output int
 	if mdc.error != nil {
 		return mdc.error
 	}
-	mdc.digitalInputs[output] = value
+	mdc.digitalOutputs[output] = value
 	return nil
 }
 
@@ -147,7 +151,7 @@ func (mdc *MockDriveController) ClearDigitalOutput(ctx context.Context, output i
 	if mdc.error != nil {
 		return mdc.error
 	}
-	mdc.digitalInputs[output] = false
+	mdc.digitalOutputs[output] = false
 	return nil
 }
 
@@ -155,7 +159,7 @@ func (mdc *MockDriveController) SetAnalogOutput(ctx context.Context, output int,
 	if mdc.error != nil {
 		return mdc.error
 	}
-	mdc.analogInputs[output] = value
+	mdc.analogOutputs[output] = value
 	return nil
 }
 
@@ -673,4 +677,13 @@ func TestMotionCommandExecutor_ExecuteMoveAbsolute_MissingParameter(t *testing.T
 	if err.Error() != "missing position parameter: parameter position not found" {
 		t.Errorf("Expected missing position parameter error, got %v", err)
 	}
+}
+
+// Additional methods needed for I/O command testing
+func (mdc *MockDriveController) GetDigitalOutput(output int) bool {
+	return mdc.digitalOutputs[output]
+}
+
+func (mdc *MockDriveController) GetAnalogOutput(output int) float64 {
+	return mdc.analogOutputs[output]
 }

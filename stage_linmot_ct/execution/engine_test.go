@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,21 +12,25 @@ import (
 
 // MockDriveController implements DriveController for testing
 type MockDriveController struct {
-	position      float64
-	velocity      float64
-	force         float64
-	digitalInputs map[int]bool
-	analogInputs  map[int]float64
-	driveState    types.DriveState
+	position       float64
+	velocity       float64
+	force          float64
+	digitalInputs  map[int]bool
+	analogInputs   map[int]float64
+	digitalOutputs map[int]bool
+	analogOutputs  map[int]float64
+	driveState     types.DriveState
 	motionComplete bool
-	error         error
+	error          error
 }
 
 func NewMockDriveController() *MockDriveController {
 	return &MockDriveController{
-		digitalInputs: make(map[int]bool),
-		analogInputs:  make(map[int]float64),
-		driveState:    types.DriveStateReady,
+		digitalInputs:  make(map[int]bool),
+		analogInputs:   make(map[int]float64),
+		digitalOutputs: make(map[int]bool),
+		analogOutputs:  make(map[int]float64),
+		driveState:     types.DriveStateReady,
 		motionComplete: true,
 	}
 }
@@ -54,12 +59,28 @@ func (mdc *MockDriveController) SetAnalogInput(input int, value float64) {
 	mdc.analogInputs[input] = value
 }
 
+func (mdc *MockDriveController) SetDigitalOutput(output int, value bool) {
+	mdc.digitalOutputs[output] = value
+}
+
+func (mdc *MockDriveController) SetAnalogOutput(output int, value float64) {
+	mdc.analogOutputs[output] = value
+}
+
 func (mdc *MockDriveController) SetDriveState(state types.DriveState) {
 	mdc.driveState = state
 }
 
 func (mdc *MockDriveController) SetMotionComplete(complete bool) {
 	mdc.motionComplete = complete
+}
+
+func (mdc *MockDriveController) GetDigitalOutput(output int) bool {
+	return mdc.digitalOutputs[output]
+}
+
+func (mdc *MockDriveController) GetAnalogOutput(output int) float64 {
+	return mdc.analogOutputs[output]
 }
 
 // DriveController interface implementation
@@ -288,6 +309,53 @@ func (mdc *MockDriveController) GetAnalogInput(ctx context.Context, input int) (
 		return 0, mdc.error
 	}
 	return mdc.analogInputs[input], nil
+}
+
+func (mdc *MockDriveController) SetDigitalOutput(ctx context.Context, output int, value bool) error {
+	if mdc.error != nil {
+		return mdc.error
+	}
+	mdc.digitalOutputs[output] = value
+	return nil
+}
+
+func (mdc *MockDriveController) ClearDigitalOutput(ctx context.Context, output int) error {
+	if mdc.error != nil {
+		return mdc.error
+	}
+	mdc.digitalOutputs[output] = false
+	return nil
+}
+
+func (mdc *MockDriveController) SetAnalogOutput(ctx context.Context, output int, value float64) error {
+	if mdc.error != nil {
+		return mdc.error
+	}
+	mdc.analogOutputs[output] = value
+	return nil
+}
+
+func (mdc *MockDriveController) WaitDigitalInput(ctx context.Context, input int, value bool, timeout time.Duration) error {
+	if mdc.error != nil {
+		return mdc.error
+	}
+	// Simple implementation - just check if the input matches the expected value
+	if mdc.digitalInputs[input] != value {
+		return fmt.Errorf("digital input %d is %v, expected %v", input, mdc.digitalInputs[input], value)
+	}
+	return nil
+}
+
+func (mdc *MockDriveController) WaitAnalogInput(ctx context.Context, input int, value float64, tolerance float64, timeout time.Duration) error {
+	if mdc.error != nil {
+		return mdc.error
+	}
+	// Simple implementation - just check if the input is within tolerance
+	actualValue := mdc.analogInputs[input]
+	if actualValue < value-tolerance || actualValue > value+tolerance {
+		return fmt.Errorf("analog input %d is %f, expected %f ± %f", input, actualValue, value, tolerance)
+	}
+	return nil
 }
 
 func (mdc *MockDriveController) GetDriveState(ctx context.Context) (types.DriveState, error) {

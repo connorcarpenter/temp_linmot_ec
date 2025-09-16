@@ -40,6 +40,30 @@ func NewCommandRegistry(driveController types.DriveController, unitConverter *ty
 	registry.RegisterExecutor(types.CmdWaitVelocity, controlExecutor)
 	registry.RegisterExecutor(types.CmdWaitForce, controlExecutor)
 	
+	// Register I/O command executor
+	ioExecutor := NewIOCommandExecutor(driveController, unitConverter)
+	registry.RegisterExecutor(types.CmdSetDigitalOutput, ioExecutor)
+	registry.RegisterExecutor(types.CmdClearDigitalOutput, ioExecutor)
+	registry.RegisterExecutor(types.CmdSetAnalogOutput, ioExecutor)
+	registry.RegisterExecutor(types.CmdWaitDigitalInput, ioExecutor)
+	registry.RegisterExecutor(types.CmdWaitAnalogInput, ioExecutor)
+	
+	// Register loop/jump command executor
+	loopExecutor := NewLoopCommandExecutor(driveController, unitConverter)
+	registry.RegisterExecutor(types.CmdLoopStart, loopExecutor)
+	registry.RegisterExecutor(types.CmdLoopEnd, loopExecutor)
+	registry.RegisterExecutor(types.CmdLoopBreak, loopExecutor)
+	registry.RegisterExecutor(types.CmdJump, loopExecutor)
+	registry.RegisterExecutor(types.CmdJumpIfTrue, loopExecutor)
+	registry.RegisterExecutor(types.CmdJumpIfFalse, loopExecutor)
+	
+	// Register system command executor
+	systemExecutor := NewSystemCommandExecutor(driveController, unitConverter)
+	registry.RegisterExecutor(types.CmdHome, systemExecutor)
+	registry.RegisterExecutor(types.CmdReset, systemExecutor)
+	registry.RegisterExecutor(types.CmdSaveConfiguration, systemExecutor)
+	registry.RegisterExecutor(types.CmdLoadConfiguration, systemExecutor)
+	
 	return registry
 }
 
@@ -122,6 +146,21 @@ func (cr *CommandRegistry) ListCommandInfo() map[types.CommandType]CommandInfo {
 		types.CmdWaitPosition: "WaitPosition",
 		types.CmdWaitVelocity: "WaitVelocity",
 		types.CmdWaitForce:    "WaitForce",
+		types.CmdSetDigitalOutput: "SetDigitalOutput",
+		types.CmdClearDigitalOutput: "ClearDigitalOutput",
+		types.CmdSetAnalogOutput: "SetAnalogOutput",
+		types.CmdWaitDigitalInput: "WaitDigitalInput",
+		types.CmdWaitAnalogInput: "WaitAnalogInput",
+		types.CmdLoopStart: "LoopStart",
+		types.CmdLoopEnd: "LoopEnd",
+		types.CmdLoopBreak: "LoopBreak",
+		types.CmdJump: "Jump",
+		types.CmdJumpIfTrue: "JumpIfTrue",
+		types.CmdJumpIfFalse: "JumpIfFalse",
+		types.CmdHome: "Home",
+		types.CmdReset: "Reset",
+		types.CmdSaveConfiguration: "SaveConfiguration",
+		types.CmdLoadConfiguration: "LoadConfiguration",
 	}
 	
 	for commandType, executor := range cr.executors {
