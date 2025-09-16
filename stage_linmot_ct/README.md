@@ -1,90 +1,383 @@
 # stage_linmot_ct
 
-High-level motion layer that replaces LinMot **Command Tables** with clear, blocking **verbs**. This module composes vendor-level operations from `stage_linmot_drive` into safe, unit-explicit commands the application can call and reason about.
+High-level motion control layer that replaces LinMot Command Tables with clear, blocking verbs. This module sits between `stage_linmot_app` (gRPC service) and `stage_linmot_drive` (CPython bridge), providing unit conversion, safety guards, and status shaping.
 
-- **Goal:** provide a stable, human-readable motion API (the “CT-analog” surface).
-- **Scope:** commands (verbs), behavioral guards, completion rules, error translation, and status shaping.
-- **Not included:** vendor bindings, gRPC, or config file loading.
+## Purpose
 
----
+The `stage_linmot_ct` module provides a high-level motion control API that replaces LinMot's Command Table functionality with clear, type-safe Go verbs. It handles unit conversion, safety validation, and provides a clean interface for motion control operations.
 
-## Why this module exists
+## Architecture
 
-Command Tables offer named, parameterized macros inside the drive. When controlling directly, you still need that structure: small, predictable **primitives** and a handful of **macro-level verbs** with strict preconditions and deterministic completion. This module is that layer.
+This module implements a comprehensive Command Table system that mirrors the functionality of LinMot-Talk Command Tables while providing modern Go interfaces and type safety.
 
----
+### Key Components
 
-## Public surface (package `drive`)
+- **Command Table System**: Complete implementation of LinMot Command Table functionality
+- **Execution Engine**: Robust command execution with state management
+- **Unit Conversion**: Automatic conversion between different unit systems
+- **Safety Guards**: Comprehensive safety checks and validation
+- **Condition System**: Flexible condition evaluation for conditional execution
+- **Status Monitoring**: Real-time status monitoring and reporting
 
-All operations are **blocking** and accept a **deadline** (`context.Context`). Inputs and status fields are **unit-explicit**.
+### Command Types
 
-### Commands (verbs)
+The module supports all LinMot Command Table command types:
 
-- TBD!
+#### Motion Commands
+- **MA (Move Absolute)**: Move to absolute position
+- **MR (Move Relative)**: Move by relative distance
+- **MI (Move Incremental)**: Move by fixed increment
+- **JO (Jog)**: Continuous motion
+- **ST (Stop)**: Stop motion immediately
 
-### Status (indicative fields)
+#### Control Commands
+- **WA (Wait)**: Wait for specified time
+- **WP (Wait Position)**: Wait for position condition
+- **WV (Wait Velocity)**: Wait for velocity condition
+- **WF (Wait Force)**: Wait for force condition
 
-- TBD!
+#### I/O Commands
+- **DO (Set Digital Output)**: Set digital output state
+- **CO (Clear Digital Output)**: Clear digital output state
+- **AO (Set Analog Output)**: Set analog output value
+- **DI (Wait Digital Input)**: Wait for digital input condition
+- **AI (Wait Analog Input)**: Wait for analog input condition
 
-### Error taxonomy
+#### Loop Commands
+- **LS (Loop Start)**: Start loop
+- **LE (Loop End)**: End loop
+- **LB (Loop Break)**: Break loop
 
-- TBD!
+#### Jump Commands
+- **JP (Jump)**: Unconditional jump
+- **JT (Jump If True)**: Jump if condition true
+- **JF (Jump If False)**: Jump if condition false
 
-Errors include a machine-readable code and short message; underlying vendor text is preserved in logs upstream.
+#### System Commands
+- **HO (Home)**: Home motor
+- **RE (Reset)**: Reset drive
+- **SC (Save Configuration)**: Save configuration
+- **LC (Load Configuration)**: Load configuration
 
----
+#### Force Control Commands
+- **FC (Force Control On)**: Enable force control
+- **FO (Force Control Off)**: Disable force control
+- **SF (Set Force)**: Set force setpoint
 
-## Design contracts
+#### Data Acquisition Commands
+- **SO (Start Oscilloscope)**: Start data acquisition
+- **SP (Stop Oscilloscope)**: Stop data acquisition
+- **SD (Save Data)**: Save acquired data
 
-- **Preconditions first:** verbs refuse motion unless required conditions hold (enabled ∧ !fault ∧ homed ∧ within limits ∧ interlocks satisfied).
-- **Deterministic completion:** verbs end by (a) reaching a drive-bit condition, (b) meeting a numeric predicate (`|pos_actual − target| ≤ tolerance_mm`), or (c) timing out.
-- **Idempotency:** safe re-entry where sensible (e.g., `Home` when already homed returns quickly).
-- **Units at the edge:** callers pass mm / mm_s / ms; internal scaling uses the resolved map from the app.
-- **Observability hooks:** each verb accepts a logger/metrics handle from the app; no global logging.
+## Public API
 
----
+### Command Table Management
+
+```go
+// Create new command table
+func NewCommandTable(id, name string) *CommandTable
+
+// Add command to table
+func (ct *CommandTable) AddCommand(cmd *Command) error
+
+// Remove command from table
+func (ct *CommandTable) RemoveCommand(id int) error
+
+// Update command in table
+func (ct *CommandTable) UpdateCommand(id int, cmd *Command) error
+
+// Validate command table
+func (ct *CommandTable) Validate() error
+```
+
+### Execution Control
+
+```go
+// Start execution
+func (ee *ExecutionEngine) Start(ctx context.Context, table *CommandTable) error
+
+// Pause execution
+func (ee *ExecutionEngine) Pause() error
+
+// Resume execution
+func (ee *ExecutionEngine) Resume() error
+
+// Stop execution
+func (ee *ExecutionEngine) Stop() error
+
+// Get execution status
+func (ee *ExecutionEngine) GetStatus() ExecutionStatus
+```
+
+### Status Monitoring
+
+```go
+// Get drive status
+func (sm *StatusMonitor) GetStatus(driveID int) (*Status, error)
+
+// Stream drive status
+func (sm *StatusMonitor) StreamStatus(ctx context.Context, driveID int) (<-chan *Status, error)
+
+// Get execution status
+func (sm *StatusMonitor) GetExecutionStatus() ExecutionStatus
+```
+
+## Design Contracts
+
+- **Thread Safety**: All operations are thread-safe
+- **Context Support**: All operations support context cancellation
+- **Error Handling**: Comprehensive error types and messages
+- **Unit Conversion**: Automatic conversion between mm and counts
+- **Safety First**: All operations include safety checks
+- **Type Safety**: Strong typing for all parameters and values
 
 ## Dependencies
 
-- **Downstream:** `stage_linmot_drive` (vendor CPython 1:1 binding).  
-- **Upstream:** the application (e.g., `stage_linmot_app`) for configuration snapshots and telemetry handles.  
-- **Wire:** none (no networking here).
+- `stage_linmot_drive`: CPython bridge for drive communication
+- `context`: Context management
+- `time`: Time handling
+- `sync`: Synchronization primitives
+- `encoding/json`: JSON serialization
+- `github.com/pkg/errors`: Enhanced error handling
 
-This module does **not** import the app; the app constructs and passes a validated configuration snapshot.
+## Configuration
 
----
+Configuration is provided through:
 
-## Configuration inputs (provided by the app)
+- **YAML Files**: `defaults.yaml` for default settings
+- **Environment Variables**: Runtime configuration
+- **gRPC Calls**: Dynamic configuration updates
+- **Command Table Parameters**: Per-command configuration
 
-> The app owns file I/O and validation; this module consumes an immutable snapshot.
+### Example Configuration
 
----
+```yaml
+command_tables:
+  - id: "basic_motion"
+    name: "Basic Motion Sequence"
+    description: "Simple move and return sequence"
+    commands:
+      - type: "MA"
+        parameters:
+          position: 100.0
+          unit: "mm"
+          velocity: 50.0
+          acceleration: 100.0
+        next_command: 2
+      - type: "WA"
+        parameters:
+          time: 1000
+          unit: "ms"
+        next_command: 3
+      - type: "MA"
+        parameters:
+          position: 0.0
+          unit: "mm"
+          velocity: 50.0
+          acceleration: 100.0
+        next_command: 0
 
-## Concurrency & timing guarantees
+safety:
+  position_limits:
+    min: -1000.0
+    max: 1000.0
+    unit: "mm"
+  force_limits:
+    max: 1000.0
+    unit: "N"
+  velocity_limits:
+    max: 100.0
+    unit: "mm/s"
+```
 
-- One verb is **active at a time** per controller instance.  
-- Deadlines are honored; on timeout the verb exits with `target_timeout` and leaves the drive in a consistent, known state (documented per verb).  
-- Long-running verbs poll vendor status at a reasonable cadence; jitter tolerance is bounded by configuration.
+## Concurrency
 
----
+- **Thread-safe**: All operations are thread-safe with proper mutex protection
+- **Context-aware**: Operations respect context cancellation
+- **Non-blocking**: Status operations are non-blocking
+- **Concurrent execution**: Multiple command tables can be executed concurrently
 
-## Package layout
+## Package Layout
 
-    stage_linmot_ct/
-      public/                # exported: public API (verbs, status, errors); no vendor calls
-      internal/              # TBD
+```
+stage_linmot_ct/
+├── go.mod
+├── README.md
+├── IMPLEMENTATION_PLAN.md
+├── LINMOT_COMMAND_TABLE_REFERENCE.md
+├── command_table.go          # Command table management
+├── commands/                 # Command implementations
+│   ├── motion.go            # Motion commands (MA, MR, MI, JO, ST)
+│   ├── control.go           # Control commands (WA, WP, WV, WF)
+│   ├── io.go                # I/O commands (DO, CO, AO, DI, AI)
+│   ├── loop.go              # Loop commands (LS, LE, LB)
+│   ├── jump.go              # Jump commands (JP, JT, JF)
+│   ├── system.go            # System commands (HO, RE, SC, LC)
+│   ├── force.go             # Force control commands (FC, FO, SF)
+│   └── data.go              # Data acquisition commands (SO, SP, SD)
+├── types/                   # Type definitions
+│   ├── commands.go          # Command type definitions
+│   ├── parameters.go        # Parameter structures
+│   ├── conditions.go        # Condition definitions
+│   └── units.go             # Unit conversion utilities
+├── execution/               # Execution engine
+│   ├── engine.go           # Main execution engine
+│   ├── state.go            # Execution state management
+│   ├── scheduler.go        # Command scheduling
+│   └── validator.go        # Command validation
+├── safety/                  # Safety and validation
+│   ├── guards.go           # Safety guards
+│   ├── limits.go           # Position/force limits
+│   └── preconditions.go    # Precondition checking
+├── conversion/              # Unit conversion
+│   ├── position.go         # Position unit conversion
+│   ├── velocity.go         # Velocity unit conversion
+│   ├── force.go            # Force unit conversion
+│   └── time.go             # Time unit conversion
+├── status/                  # Status management
+│   ├── monitor.go          # Status monitoring
+│   ├── shaping.go          # Status shaping
+│   └── errors.go           # Error translation
+├── examples/                # Usage examples
+│   ├── basic_motion.go     # Basic motion examples
+│   ├── complex_sequence.go # Complex sequence examples
+│   └── error_handling.go   # Error handling examples
+└── tests/                   # Test files
+    ├── command_table_test.go
+    ├── execution_test.go
+    ├── safety_test.go
+    └── conversion_test.go
+```
 
----
+## Usage Examples
 
-## Testing stance (module level)
+### Basic Command Table Creation
 
-- Table-driven unit tests for verbs (success, timeout, fault paths).  
-- Behavior tests for transitions and status shaping.  
-- Adapter tests proving `port_python` satisfies `port_interface`.
+```go
+// Create command table manager
+manager := NewCommandTableManager(executionEngine, unitConverter, validator)
 
----
+// Create a new command table
+table := manager.CreateTable("basic_motion", "Basic Motion", "Simple move sequence")
 
-## Notes
+// Add commands
+cmd1 := NewCommandBuilder().
+    WithID(1).
+    WithType(CmdMoveAbsolute).
+    WithParameter("position", NewPositionValue(100.0, PositionUnitMM)).
+    WithParameter("velocity", NewVelocityValue(50.0, VelocityUnitMMS)).
+    WithNextCommand(2).
+    Build()
 
-- Keep the public surface **small and boring**. Prefer composing verbs to adding bespoke one-offs.  
-- Only the adapter touches vendor calls; everywhere else speaks in **names** and **units**.
+cmd2 := NewCommandBuilder().
+    WithID(2).
+    WithType(CmdWait).
+    WithParameter("time", NewTimeValue(1000.0, TimeUnitMS)).
+    WithNextCommand(3).
+    Build()
+
+cmd3 := NewCommandBuilder().
+    WithID(3).
+    WithType(CmdMoveAbsolute).
+    WithParameter("position", NewPositionValue(0.0, PositionUnitMM)).
+    WithParameter("velocity", NewVelocityValue(50.0, VelocityUnitMMS)).
+    WithNextCommand(0).
+    Build()
+
+// Add commands to table
+manager.AddCommand(table, cmd1)
+manager.AddCommand(table, cmd2)
+manager.AddCommand(table, cmd3)
+
+// Execute the table
+ctx := context.Background()
+err := manager.StartExecution(ctx, table)
+```
+
+### Conditional Execution
+
+```go
+// Create a command with conditions
+cmd := NewCommandBuilder().
+    WithID(1).
+    WithType(CmdMoveAbsolute).
+    WithParameter("position", NewPositionValue(100.0, PositionUnitMM)).
+    WithCondition(DigitalInputCondition(1, true, nil)).
+    WithNextCommand(2).
+    Build()
+```
+
+### Loop Execution
+
+```go
+// Create a loop
+loopStart := NewCommandBuilder().
+    WithID(1).
+    WithType(CmdLoopStart).
+    WithParameter("counter_variable", "loop_count").
+    WithParameter("max_iterations", 10).
+    WithNextCommand(2).
+    Build()
+
+loopEnd := NewCommandBuilder().
+    WithID(3).
+    WithType(CmdLoopEnd).
+    WithParameter("counter_variable", "loop_count").
+    WithNextCommand(1).
+    Build()
+```
+
+## Testing
+
+- **Unit Tests**: Comprehensive unit test coverage for all components
+- **Integration Tests**: Tests with real hardware via `stage_linmot_drive`
+- **Mock Tests**: Tests with mocked drive interface
+- **Performance Tests**: Latency and throughput tests
+- **Safety Tests**: Validation of safety guards and limits
+
+## Error Handling
+
+The module provides comprehensive error handling with typed errors:
+
+```go
+type CommandTableError struct {
+    Type        ErrorType
+    CommandID   int
+    Message     string
+    Cause       error
+}
+
+type ErrorType int
+const (
+    ErrInvalidCommand    ErrorType = iota
+    ErrInvalidParameter
+    ErrTimeout
+    ErrSafetyViolation
+    ErrDriveFault
+    ErrCommunicationError
+    ErrExecutionError
+)
+```
+
+## Performance Considerations
+
+- **Command pre-validation**: Commands are validated before execution
+- **Parameter caching**: Frequently used parameters are cached
+- **Efficient unit conversion**: Optimized conversion algorithms
+- **Minimal memory allocation**: Reduced garbage collection pressure
+- **Concurrent execution**: Multiple command tables can run simultaneously
+
+## Future Enhancements
+
+- **Command Table Persistence**: Save/load command tables to/from files
+- **Visual Command Table Editor**: GUI for creating and editing command tables
+- **Real-time Monitoring Dashboard**: Web-based monitoring interface
+- **Advanced Debugging Tools**: Step-by-step execution and variable inspection
+- **Performance Analytics**: Detailed performance metrics and optimization suggestions
+
+## Out of Scope
+
+- **Low-level EtherCAT**: Handled by `stage_linmot_drive`
+- **gRPC Interface**: Handled by `stage_linmot_app`
+- **Configuration Persistence**: Handled by `stage_linmot_app`
+- **User Interface**: Handled by external applications
