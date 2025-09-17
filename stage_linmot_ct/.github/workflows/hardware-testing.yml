@@ -1,0 +1,300 @@
+name: Hardware Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run hardware tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_category:
+        description: 'Test category to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - motion
+        - force_control
+        - io
+        - safety
+        - performance
+        - integration
+      hardware_address:
+        description: 'Hardware address (1-255)'
+        required: false
+        default: '1'
+        type: string
+
+jobs:
+  hardware-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    
+    strategy:
+      matrix:
+        go-version: [1.21, 1.22]
+        test-category: [motion, force_control, io, safety, performance, integration]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+        
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+          
+    - name: Install dependencies
+      run: |
+        go mod download
+        go mod verify
+        
+    - name: Run unit tests
+      run: |
+        go test -v -race -coverprofile=coverage.out ./...
+        go tool cover -html=coverage.out -o coverage.html
+        
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        
+    - name: Run hardware tests
+      if: matrix.test-category == 'motion' || matrix.test-category == 'all'
+      run: |
+        go run examples/hardware_testing/main.go --category=${{ matrix.test-category }} --hardware-address=${{ github.event.inputs.hardware_address || '1' }}
+      env:
+        HARDWARE_ADDRESS: ${{ github.event.inputs.hardware_address || '1' }}
+        ETHERCAT_MASTER: eth0
+        TEST_TIMEOUT: 5m
+        LOG_LEVEL: INFO
+        
+    - name: Run force control tests
+      if: matrix.test-category == 'force_control' || matrix.test-category == 'all'
+      run: |
+        go run examples/hardware_testing/main.go --category=force_control --hardware-address=${{ github.event.inputs.hardware_address || '1' }}
+      env:
+        HARDWARE_ADDRESS: ${{ github.event.inputs.hardware_address || '1' }}
+        ETHERCAT_MASTER: eth0
+        TEST_TIMEOUT: 3m
+        LOG_LEVEL: INFO
+        
+    - name: Run I/O tests
+      if: matrix.test-category == 'io' || matrix.test-category == 'all'
+      run: |
+        go run examples/hardware_testing/main.go --category=io --hardware-address=${{ github.event.inputs.hardware_address || '1' }}
+      env:
+        HARDWARE_ADDRESS: ${{ github.event.inputs.hardware_address || '1' }}
+        ETHERCAT_MASTER: eth0
+        TEST_TIMEOUT: 2m
+        LOG_LEVEL: INFO
+        
+    - name: Run safety tests
+      if: matrix.test-category == 'safety' || matrix.test-category == 'all'
+      run: |
+        go run examples/hardware_testing/main.go --category=safety --hardware-address=${{ github.event.inputs.hardware_address || '1' }}
+      env:
+        HARDWARE_ADDRESS: ${{ github.event.inputs.hardware_address || '1' }}
+        ETHERCAT_MASTER: eth0
+        TEST_TIMEOUT: 3m
+        LOG_LEVEL: INFO
+        
+    - name: Run performance tests
+      if: matrix.test-category == 'performance' || matrix.test-category == 'all'
+      run: |
+        go run examples/hardware_testing/main.go --category=performance --hardware-address=${{ github.event.inputs.hardware_address || '1' }}
+      env:
+        HARDWARE_ADDRESS: ${{ github.event.inputs.hardware_address || '1' }}
+        ETHERCAT_MASTER: eth0
+        TEST_TIMEOUT: 5m
+        LOG_LEVEL: INFO
+        
+    - name: Run integration tests
+      if: matrix.test-category == 'integration' || matrix.test-category == 'all'
+      run: |
+        go run examples/hardware_testing/main.go --category=integration --hardware-address=${{ github.event.inputs.hardware_address || '1' }}
+      env:
+        HARDWARE_ADDRESS: ${{ github.event.inputs.hardware_address || '1' }}
+        ETHERCAT_MASTER: eth0
+        TEST_TIMEOUT: 10m
+        LOG_LEVEL: INFO
+        
+    - name: Generate test report
+      if: always()
+      run: |
+        go run examples/hardware_testing/main.go --generate-report --format=html --output=test-report.html
+        
+    - name: Upload test artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ matrix.test-category }}-go${{ matrix.go-version }}
+        path: |
+          test-report.html
+          coverage.html
+          *.log
+          
+    - name: Comment PR with test results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Read test results
+          let testResults = 'Test results not available';
+          try {
+            const reportPath = 'test-report.html';
+            if (fs.existsSync(reportPath)) {
+              testResults = fs.readFileSync(reportPath, 'utf8');
+            }
+          } catch (error) {
+            console.log('Could not read test report:', error);
+          }
+          
+          // Create comment
+          const comment = `## Hardware Test Results
+          
+          **Test Category:** ${{ matrix.test-category }}
+          **Go Version:** ${{ matrix.go-version }}
+          
+          ${testResults}
+          
+          ---
+          *This comment was automatically generated by the hardware testing workflow.*`;
+          
+          // Post comment
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+        
+    - name: Run Gosec Security Scanner
+      uses: securecodewarrior/github-action-gosec@master
+      with:
+        args: '-fmt sarif -out gosec-results.sarif ./...'
+        
+    - name: Upload Gosec scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'gosec-results.sarif'
+
+  performance-benchmarks:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22'
+        
+    - name: Run performance benchmarks
+      run: |
+        go test -bench=. -benchmem -run=^$ ./... > benchmark-results.txt
+        
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: benchmark-results.txt
+        
+    - name: Comment benchmark results
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let benchmarkResults = 'Benchmark results not available';
+          try {
+            if (fs.existsSync('benchmark-results.txt')) {
+              benchmarkResults = fs.readFileSync('benchmark-results.txt', 'utf8');
+            }
+          } catch (error) {
+            console.log('Could not read benchmark results:', error);
+          }
+          
+          const comment = `## Performance Benchmark Results
+          
+          \`\`\`
+          ${benchmarkResults}
+          \`\`\`
+          
+          ---
+          *This comment was automatically generated by the performance benchmark workflow.*`;
+          
+          github.rest.repos.createCommitComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            commit_sha: context.sha,
+            body: comment
+          });
+
+  hardware-availability-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22'
+        
+    - name: Check hardware availability
+      run: |
+        go run examples/hardware_testing/main.go --check-hardware --hardware-address=1
+      env:
+        HARDWARE_ADDRESS: 1
+        ETHERCAT_MASTER: eth0
+        LOG_LEVEL: INFO
+        
+    - name: Notify on hardware unavailability
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: 'Hardware testing failed - LinMot C1250-EC not available'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
