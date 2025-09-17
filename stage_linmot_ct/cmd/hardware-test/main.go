@@ -7,6 +7,13 @@ import (
 	"log"
 	"os"
 	"time"
+
+	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct"
+	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/hardware"
+	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/pkg/e2e"
+	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/pkg/hil"
+	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/safety"
+	"github.com/Smart-Vision-Works/svw_mono/stage_linmot_ct/types"
 )
 
 func main() {
@@ -49,14 +56,28 @@ func main() {
 	fmt.Printf("Stop on Failure: %v\n", *stopOnFailure)
 	fmt.Printf("\n")
 
-	// For now, this is a placeholder implementation
-	// In a real implementation, this would connect to actual hardware
-	fmt.Printf("Hardware Testing Tool\n")
-	fmt.Printf("=====================\n")
-	fmt.Printf("\n")
-	fmt.Printf("This tool is designed to test LinMot C1250-EC hardware over EtherCAT.\n")
-	fmt.Printf("Currently running in simulation mode.\n")
-	fmt.Printf("\n")
+	// Create a mock hardware controller for demonstration
+	// In a real implementation, this would be a real hardware controller
+	controller := NewMockHardwareController()
+	
+	// Create safety guard
+	safetyGuard := safety.NewSafetyGuard()
+	
+	// Create unit converter
+	unitConverter := types.NewUnitConverter()
+	
+	// Create condition evaluator
+	conditionEvaluator := types.NewDefaultConditionEvaluator(controller)
+	
+	// Create execution engine
+	executionEngine := stage_linmot_ct.NewDefaultExecutionEngine(
+		controller, unitConverter, conditionEvaluator, safetyGuard,
+	)
+	
+	// Create command table manager
+	manager := stage_linmot_ct.NewCommandTableManager(
+		executionEngine, unitConverter, nil,
+	)
 
 	// Check hardware availability if requested
 	if *checkHardware {
@@ -64,20 +85,31 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		
-		// Simulate hardware check
-		fmt.Printf("Connecting to EtherCAT master: %s\n", *ethercatMaster)
-		time.Sleep(1 * time.Second)
+		// Connect to hardware
+		err := controller.Connect(ctx)
+		if err != nil {
+			log.Fatalf("Failed to connect to hardware: %v", err)
+		}
+		defer controller.Disconnect()
 		
-		fmt.Printf("Scanning for LinMot C1250-EC drives...\n")
-		time.Sleep(1 * time.Second)
+		// Get hardware info
+		info, err := controller.GetHardwareInfo()
+		if err != nil {
+			log.Fatalf("Failed to get hardware info: %v", err)
+		}
 		
-		fmt.Printf("Found LinMot C1250-EC at address %s\n", *hardwareAddress)
 		fmt.Printf("Hardware Info:\n")
-		fmt.Printf("  Model: LinMot C1250-EC\n")
-		fmt.Printf("  Serial Number: SIM123456\n")
-		fmt.Printf("  Firmware Version: 1.0.0\n")
-		fmt.Printf("  EtherCAT Address: %s\n", *hardwareAddress)
-		fmt.Printf("  Capabilities: [Motion, ForceControl, DigitalIO, AnalogIO]\n")
+		fmt.Printf("  Model: %s\n", info.Model)
+		fmt.Printf("  Serial Number: %s\n", info.SerialNumber)
+		fmt.Printf("  Firmware Version: %s\n", info.FirmwareVersion)
+		fmt.Printf("  EtherCAT Address: %d\n", info.EtherCATAddress)
+		fmt.Printf("  Capabilities: %v\n", info.Capabilities)
+		
+		// Test basic connectivity
+		err = controller.Ping()
+		if err != nil {
+			log.Fatalf("Hardware ping failed: %v", err)
+		}
 		
 		fmt.Printf("Hardware is available and responding!\n")
 		return
@@ -88,24 +120,74 @@ func main() {
 		fmt.Printf("Running Hardware-in-the-Loop Tests:\n")
 		fmt.Printf("==================================\n")
 		
-		// Simulate HIL tests
-		testCategories := []string{"motion", "force_control", "io", "safety", "performance"}
-		if *testCategory != "all" {
-			testCategories = []string{*testCategory}
+		// Create HIL test suite
+		hilConfig := &hil.TestConfig{
+			EtherCATMaster:        *ethercatMaster,
+			DriveAddress:          parseHardwareAddress(*hardwareAddress),
+			SafetyLimits:          &safety.SafetyLimits{},
+			TestTimeout:           *testTimeout,
+			RetryAttempts:         3,
+			LogLevel:              *logLevel,
+			EnableSafetyTests:     true,
+			EnablePerformanceTests: true,
+			MaxConcurrency:        *maxConcurrency,
 		}
 		
-		for _, category := range testCategories {
-			fmt.Printf("Running %s tests...\n", category)
-			time.Sleep(2 * time.Second)
-			
-			// Simulate test results
-			fmt.Printf("  ✓ Basic %s test passed (1.2s)\n", category)
-			fmt.Printf("  ✓ Advanced %s test passed (0.8s)\n", category)
-			fmt.Printf("  ✓ Error handling %s test passed (0.5s)\n", category)
+		hilSuite := hil.NewHardwareTestSuite(controller, safetyGuard, hilConfig)
+		
+		// Connect to hardware
+		ctx := context.Background()
+		err := controller.Connect(ctx)
+		if err != nil {
+			log.Fatalf("Failed to connect to hardware: %v", err)
+		}
+		defer controller.Disconnect()
+		
+		// Run tests based on category
+		var results []*hardware.HardwareTestResult
+		var err error
+		
+		switch *testCategory {
+		case "all":
+			results, err = hilSuite.RunAllTests(ctx)
+		case "motion":
+			results, err = hilSuite.RunBasicMotionTests(ctx)
+		case "force_control":
+			results, err = hilSuite.RunForceControlTests(ctx)
+		case "io":
+			results, err = hilSuite.RunIOTests(ctx)
+		case "safety":
+			results, err = hilSuite.RunSafetyTests(ctx)
+		case "performance":
+			results, err = hilSuite.RunPerformanceTests(ctx)
+		default:
+			log.Fatalf("Unknown test category: %s", *testCategory)
 		}
 		
-		fmt.Printf("\nHIL Test Results: 15 tests executed\n")
-		fmt.Printf("  Passed: 15, Failed: 0\n")
+		if err != nil {
+			log.Fatalf("HIL tests failed: %v", err)
+		}
+		
+		// Print results
+		fmt.Printf("HIL Test Results: %d tests executed\n", len(results))
+		passed := 0
+		failed := 0
+		for _, result := range results {
+			if result.Passed {
+				passed++
+			} else {
+				failed++
+			}
+			status := "PASS"
+			if !result.Passed {
+				status = "FAIL"
+			}
+			fmt.Printf("  %s - %s (%v)\n", status, result.TestName, result.Duration)
+			if result.Error != nil {
+				fmt.Printf("    Error: %v\n", result.Error)
+			}
+		}
+		fmt.Printf("  Passed: %d, Failed: %d\n", passed, failed)
 		fmt.Printf("\n")
 	}
 
@@ -114,42 +196,95 @@ func main() {
 		fmt.Printf("Running End-to-End Tests:\n")
 		fmt.Printf("========================\n")
 		
-		// Simulate E2E tests
-		scenarios := []string{
-			"Complete Motion Sequence",
-			"Force Control Workflow", 
-			"I/O Control Workflow",
-			"Safety System Workflow",
-			"Performance Test",
-			"Integration Test",
+		// Create E2E test suite
+		testSuite := e2e.NewE2ETestSuite(controller, manager)
+		
+		// Add test scenarios based on category
+		switch *testCategory {
+		case "all":
+			testSuite.AddScenario(e2e.CreateMotionSequenceScenario(controller, manager))
+			testSuite.AddScenario(e2e.CreateForceControlScenario(controller, manager))
+			testSuite.AddScenario(e2e.CreateIOControlScenario(controller, manager))
+			testSuite.AddScenario(e2e.CreateSafetyScenario(controller, manager, safetyGuard))
+			testSuite.AddScenario(e2e.CreatePerformanceScenario(controller, manager))
+			testSuite.AddScenario(e2e.CreateIntegrationScenario(controller, manager))
+		case "motion":
+			testSuite.AddScenario(e2e.CreateMotionSequenceScenario(controller, manager))
+		case "force_control":
+			testSuite.AddScenario(e2e.CreateForceControlScenario(controller, manager))
+		case "io":
+			testSuite.AddScenario(e2e.CreateIOControlScenario(controller, manager))
+		case "safety":
+			testSuite.AddScenario(e2e.CreateSafetyScenario(controller, manager, safetyGuard))
+		case "performance":
+			testSuite.AddScenario(e2e.CreatePerformanceScenario(controller, manager))
+		case "integration":
+			testSuite.AddScenario(e2e.CreateIntegrationScenario(controller, manager))
+		default:
+			log.Fatalf("Unknown test category: %s", *testCategory)
 		}
 		
-		if *testCategory != "all" {
-			scenarios = []string{*testCategory + " Test"}
+		// Create test executor
+		executorConfig := &e2e.ExecutorConfig{
+			ParallelExecution:   *parallel,
+			MaxConcurrency:      *maxConcurrency,
+			RetryFailedTests:    true,
+			MaxRetries:          2,
+			StopOnFirstFailure:  *stopOnFailure,
+			GenerateReport:      *generateReport,
+			ReportFormat:        *reportFormat,
+			TestTimeout:         *testTimeout,
+			LogLevel:            *logLevel,
+			EnableMetrics:       true,
+			MetricsInterval:     1 * time.Second,
 		}
 		
-		for _, scenario := range scenarios {
-			fmt.Printf("Running %s...\n", scenario)
-			time.Sleep(3 * time.Second)
-			fmt.Printf("  ✓ %s passed (2.1s)\n", scenario)
+		executor := e2e.NewTestExecutor(testSuite, executorConfig)
+		
+		// Run tests
+		ctx := context.Background()
+		results, err := executor.RunAllTests(ctx)
+		if err != nil {
+			log.Fatalf("E2E test execution failed: %v", err)
 		}
 		
-		fmt.Printf("\nE2E Test Execution Complete\n")
+		// Print results
+		fmt.Printf("E2E Test Execution Complete\n")
 		fmt.Printf("===========================\n")
-		fmt.Printf("Total Tests: %d\n", len(scenarios))
-		fmt.Printf("Passed: %d (100.0%%)\n", len(scenarios))
-		fmt.Printf("Failed: 0\n")
-		fmt.Printf("Skipped: 0\n")
-		fmt.Printf("Errors: 0\n")
-		fmt.Printf("Total Duration: %v\n", time.Duration(len(scenarios)*3)*time.Second)
-		fmt.Printf("Average Duration: 3.0s\n")
-	}
-	
-	// Generate report if requested
-	if *generateReport {
-		fmt.Printf("\nGenerating test report: %s\n", *reportOutput)
-		fmt.Printf("Report format: %s\n", *reportFormat)
-		// Report generation would be implemented here
+		fmt.Printf("Total Tests: %d\n", results.Summary.TotalTests)
+		fmt.Printf("Passed: %d (%.1f%%)\n", results.Summary.PassedTests, results.GetPassRate())
+		fmt.Printf("Failed: %d\n", results.Summary.FailedTests)
+		fmt.Printf("Skipped: %d\n", results.Summary.SkippedTests)
+		fmt.Printf("Errors: %d\n", results.Summary.ErrorTests)
+		fmt.Printf("Total Duration: %v\n", results.TotalDuration)
+		fmt.Printf("Average Duration: %v\n", results.GetAverageDuration())
+		
+		// Print detailed results
+		fmt.Printf("\nDetailed Results:\n")
+		fmt.Printf("================\n")
+		for _, result := range results.Scenarios {
+			status := "PASS"
+			if result.Status == e2e.StatusFailed {
+				status = "FAIL"
+			} else if result.Status == e2e.StatusError {
+				status = "ERROR"
+			} else if result.Status == e2e.StatusSkipped {
+				status = "SKIP"
+			}
+			
+			fmt.Printf("%s - %s (%s) - %v", status, result.Scenario.Name, result.Scenario.Category, result.Duration)
+			if result.Error != nil {
+				fmt.Printf(" - Error: %v", result.Error)
+			}
+			fmt.Printf("\n")
+		}
+		
+		// Generate report if requested
+		if *generateReport {
+			fmt.Printf("\nGenerating test report: %s\n", *reportOutput)
+			fmt.Printf("Report format: %s\n", *reportFormat)
+			// Report generation would be implemented here
+		}
 	}
 	
 	fmt.Printf("\nHardware Testing Complete!\n")
@@ -214,4 +349,338 @@ func showHelp() {
 	fmt.Printf("  # Generate HTML report\n")
 	fmt.Printf("  go run cmd/hardware-test/main.go -generate-report -report-format=HTML\n")
 	fmt.Printf("\n")
+}
+
+// parseHardwareAddress parses the hardware address string to int
+func parseHardwareAddress(addr string) int {
+	var address int
+	_, err := fmt.Sscanf(addr, "%d", &address)
+	if err != nil {
+		log.Fatalf("Invalid hardware address: %s", addr)
+	}
+	if address < 1 || address > 255 {
+		log.Fatalf("Hardware address must be between 1 and 255, got: %d", address)
+	}
+	return address
+}
+
+// MockHardwareController implements the HardwareController interface for testing
+type MockHardwareController struct {
+	connected      bool
+	position       float64
+	velocity       float64
+	force          float64
+	digitalOutputs map[int]bool
+	analogOutputs  map[int]float64
+	digitalInputs  map[int]bool
+	analogInputs   map[int]float64
+	motionComplete bool
+	driveState     types.DriveState
+}
+
+// NewMockHardwareController creates a new mock hardware controller
+func NewMockHardwareController() *MockHardwareController {
+	return &MockHardwareController{
+		connected:      false,
+		position:       0.0,
+		velocity:       0.0,
+		force:          0.0,
+		digitalOutputs: make(map[int]bool),
+		analogOutputs:  make(map[int]float64),
+		digitalInputs:  make(map[int]bool),
+		analogInputs:   make(map[int]float64),
+		motionComplete: true,
+		driveState:     types.DriveStateReady,
+	}
+}
+
+// Implement HardwareController interface
+func (mhc *MockHardwareController) Connect(ctx context.Context) error {
+	mhc.connected = true
+	return nil
+}
+
+func (mhc *MockHardwareController) Disconnect() error {
+	mhc.connected = false
+	return nil
+}
+
+func (mhc *MockHardwareController) GetHardwareInfo() (*hardware.HardwareInfo, error) {
+	return &hardware.HardwareInfo{
+		Model:           "LinMot C1250-EC",
+		SerialNumber:    "MOCK123456",
+		FirmwareVersion: "1.0.0",
+		EtherCATAddress: 1,
+		Capabilities:    []string{"Motion", "ForceControl", "DigitalIO", "AnalogIO"},
+		LastUpdated:     time.Now(),
+	}, nil
+}
+
+func (mhc *MockHardwareController) IsConnected() bool {
+	return mhc.connected
+}
+
+func (mhc *MockHardwareController) GetConnectionStatus() *hardware.ConnectionStatus {
+	return &hardware.ConnectionStatus{
+		Connected: mhc.connected,
+		LastSeen:  time.Now(),
+		ErrorCount: 0,
+		Latency:   1 * time.Millisecond,
+		Throughput: 1000.0,
+		Quality:   hardware.QualityExcellent,
+	}
+}
+
+func (mhc *MockHardwareController) Ping() error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	return nil
+}
+
+// Implement DriveController interface
+func (mhc *MockHardwareController) MoveAbsolute(ctx context.Context, position, velocity, acceleration, jerk float64) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.position = position
+	mhc.motionComplete = false
+	// Simulate motion completion after a short delay
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		mhc.motionComplete = true
+	}()
+	return nil
+}
+
+func (mhc *MockHardwareController) MoveRelative(ctx context.Context, position, velocity, acceleration, jerk float64) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.position += position
+	mhc.motionComplete = false
+	// Simulate motion completion after a short delay
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		mhc.motionComplete = true
+	}()
+	return nil
+}
+
+func (mhc *MockHardwareController) MoveIncremental(ctx context.Context, position, velocity, acceleration, jerk float64) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.position += position
+	mhc.motionComplete = false
+	// Simulate motion completion after a short delay
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		mhc.motionComplete = true
+	}()
+	return nil
+}
+
+func (mhc *MockHardwareController) Jog(ctx context.Context, velocity float64) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.velocity = velocity
+	mhc.motionComplete = false
+	return nil
+}
+
+func (mhc *MockHardwareController) Stop(ctx context.Context) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.velocity = 0.0
+	mhc.motionComplete = true
+	return nil
+}
+
+func (mhc *MockHardwareController) GetPosition(ctx context.Context) (float64, error) {
+	if !mhc.connected {
+		return 0, fmt.Errorf("not connected")
+	}
+	return mhc.position, nil
+}
+
+func (mhc *MockHardwareController) GetVelocity(ctx context.Context) (float64, error) {
+	if !mhc.connected {
+		return 0, fmt.Errorf("not connected")
+	}
+	return mhc.velocity, nil
+}
+
+func (mhc *MockHardwareController) GetForce(ctx context.Context) (float64, error) {
+	if !mhc.connected {
+		return 0, fmt.Errorf("not connected")
+	}
+	return mhc.force, nil
+}
+
+func (mhc *MockHardwareController) IsMotionComplete(ctx context.Context) (bool, error) {
+	if !mhc.connected {
+		return false, fmt.Errorf("not connected")
+	}
+	return mhc.motionComplete, nil
+}
+
+func (mhc *MockHardwareController) GetDriveState(ctx context.Context) (types.DriveState, error) {
+	if !mhc.connected {
+		return types.DriveState(0), fmt.Errorf("not connected")
+	}
+	return mhc.driveState, nil
+}
+
+func (mhc *MockHardwareController) GetDigitalInput(ctx context.Context, input int) (bool, error) {
+	if !mhc.connected {
+		return false, fmt.Errorf("not connected")
+	}
+	return mhc.digitalInputs[input], nil
+}
+
+func (mhc *MockHardwareController) GetAnalogInput(ctx context.Context, input int) (float64, error) {
+	if !mhc.connected {
+		return 0, fmt.Errorf("not connected")
+	}
+	return mhc.analogInputs[input], nil
+}
+
+func (mhc *MockHardwareController) SetDigitalOutput(ctx context.Context, output int, value bool) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.digitalOutputs[output] = value
+	return nil
+}
+
+func (mhc *MockHardwareController) ClearDigitalOutput(ctx context.Context, output int) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.digitalOutputs[output] = false
+	return nil
+}
+
+func (mhc *MockHardwareController) GetDigitalOutput(ctx context.Context, output int) (bool, error) {
+	if !mhc.connected {
+		return false, fmt.Errorf("not connected")
+	}
+	return mhc.digitalOutputs[output], nil
+}
+
+func (mhc *MockHardwareController) SetAnalogOutput(ctx context.Context, output int, value float64) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.analogOutputs[output] = value
+	return nil
+}
+
+func (mhc *MockHardwareController) GetAnalogOutput(ctx context.Context, output int) (float64, error) {
+	if !mhc.connected {
+		return 0, fmt.Errorf("not connected")
+	}
+	return mhc.analogOutputs[output], nil
+}
+
+func (mhc *MockHardwareController) WaitDigitalInput(ctx context.Context, input int, value bool, timeout time.Duration) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	// Simulate immediate success for testing
+	return nil
+}
+
+func (mhc *MockHardwareController) WaitAnalogInput(ctx context.Context, input int, value float64, tolerance float64, timeout time.Duration) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	// Simulate immediate success for testing
+	return nil
+}
+
+func (mhc *MockHardwareController) Home(ctx context.Context) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.position = 0.0
+	mhc.motionComplete = false
+	// Simulate homing completion after a short delay
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		mhc.motionComplete = true
+	}()
+	return nil
+}
+
+func (mhc *MockHardwareController) Reset(ctx context.Context) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.position = 0.0
+	mhc.velocity = 0.0
+	mhc.force = 0.0
+	mhc.motionComplete = true
+	mhc.driveState = types.DriveStateReady
+	return nil
+}
+
+func (mhc *MockHardwareController) SaveConfiguration(ctx context.Context) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	return nil
+}
+
+func (mhc *MockHardwareController) LoadConfiguration(ctx context.Context) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	return nil
+}
+
+func (mhc *MockHardwareController) ForceControlOn(ctx context.Context) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	return nil
+}
+
+func (mhc *MockHardwareController) ForceControlOff(ctx context.Context) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	return nil
+}
+
+func (mhc *MockHardwareController) SetForce(ctx context.Context, force float64) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	mhc.force = force
+	return nil
+}
+
+func (mhc *MockHardwareController) StartOscilloscope(ctx context.Context, channels []int, sampleRate float64) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	return nil
+}
+
+func (mhc *MockHardwareController) StopOscilloscope(ctx context.Context) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	return nil
+}
+
+func (mhc *MockHardwareController) SaveData(ctx context.Context, filename string) error {
+	if !mhc.connected {
+		return fmt.Errorf("not connected")
+	}
+	return nil
 }
